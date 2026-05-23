@@ -85,7 +85,7 @@ export async function generatePresetRoute(concept: 'hanriver' | 'cherryblossom' 
 
 // 4. 실제 GPX 파일 매핑 및 파싱 (드로잉 경로 누락 완벽 해결)
 export async function generateDrawingRoute(shape: 'dog' | 'sweetpotato') {
-  const gpxFileName = shape === 'dog' ? '경복궁 댕댕런(멍뭉런).gpx' : '서울_여의도 고구마런.gpx';
+  const gpxFileName = shape === 'dog' ? 'dog_run.gpx' : 'sweetpotato_run.gpx';
 
   try {
     const response = await fetch(`/${encodeURIComponent(gpxFileName)}`);
