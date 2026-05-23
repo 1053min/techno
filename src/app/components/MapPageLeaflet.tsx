@@ -8,14 +8,17 @@ import {
   centiSecondsToSeconds,
 } from "../services/trafficSignalService";
 import { INTERSECTION_LOCATIONS, getNearbyIntersections } from "../services/intersectionData";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+declare global {
+  interface Window {
+    Tmapv2: any;
+  }
+}
 
 export function MapPageLeaflet() {
   const navigate = useNavigate();
   const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<L.Map | null>(null);
-  const [markers, setMarkers] = useState<L.Marker[]>([]);
+  const leafletMapRef = useRef<any>(null);
+  const [markers, setMarkers] = useState<any[]>([]);
   const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
 
   // 현재 위치 가져오기 (브라우저 Geolocation)
@@ -46,19 +49,24 @@ export function MapPageLeaflet() {
   // Leaflet 지도 초기화
   useEffect(() => {
     if (!mapRef.current || !currentPosition || leafletMapRef.current) return;
+    if (!window.Tmapv2) return; // 티맵 스크립트 로드 확인
 
-    // Leaflet 지도 생성
-    const map = L.map(mapRef.current).setView([currentPosition.lat, currentPosition.lng], 15);
+    // TMAP 지도 객체 생성
+    const map = new window.Tmapv2.Map(mapRef.current, {
+      center: new window.Tmapv2.LatLng(currentPosition.lat, currentPosition.lng),
+      width: "100%",
+      height: "100%",
+      zoom: 15,
+      zoomControl: true,
+      scrollwheel: true
+    });
 
-    // OpenStreetMap 타일 레이어 추가
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map);
+    leafletMapRef.current = map;
 
-    // 현재 위치 마커
-    const currentLocationIcon = L.divIcon({
-      html: `
+    // 현재 위치 서클/마커 표시 (HTML 커스텀 핀)
+    const currentLocationMarker = new window.Tmapv2.Marker({
+      position: new window.Tmapv2.LatLng(currentPosition.lat, currentPosition.lng),
+      iconHTML: `
         <div style="
           width: 20px;
           height: 20px;
@@ -68,17 +76,11 @@ export function MapPageLeaflet() {
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         "></div>
       `,
-      className: "",
-      iconSize: [20, 20],
-      iconAnchor: [10, 10],
+      map: map
     });
 
-    L.marker([currentPosition.lat, currentPosition.lng], { icon: currentLocationIcon }).addTo(map);
-
-    leafletMapRef.current = map;
-
     return () => {
-      map.remove();
+      // 언마운트 시 필요에 따라 초기화 처리
     };
   }, [currentPosition]);
 
@@ -97,19 +99,16 @@ export function MapPageLeaflet() {
     if (!leafletMapRef.current || !currentPosition) return;
 
     const updateSignalMarkers = () => {
-      markersRef.current.forEach((marker) => marker.remove());
+      // 기존 마커 전체 삭제
+      markersRef.current.forEach((marker) => marker.setMap(null));
 
-      const newMarkers: L.Marker[] = [];
-
-      // 주변 교차로 찾기
+      const newMarkers: any[] = [];
       const nearby = getNearbyIntersections(currentPosition.lat, currentPosition.lng, 3);
 
       nearby.slice(0, 15).forEach(intersection => {
         const signal = getSignalFromCache(intersection.itstId);
+        if (!signal) return;
 
-        if (!signal) return;  // 신호 데이터 없으면 스킵
-
-        // 4방향 횡단보도 (신호 있는 방향만)
         const directions = [
           { key: 'ntPdsgRmdrCs', name: '북쪽', latOffset: 0.0003, lngOffset: 0, emoji: '↑' },
           { key: 'stPdsgRmdrCs', name: '남쪽', latOffset: -0.0003, lngOffset: 0, emoji: '↓' },
@@ -119,49 +118,23 @@ export function MapPageLeaflet() {
 
         directions.forEach(dir => {
           const timeCs = signal[dir.key];
-          if (!timeCs || timeCs === null) return;  // 신호 없으면 스킵
+          if (!timeCs || timeCs === null) return;
 
           const time = centiSecondsToSeconds(timeCs);
           const emoji = getSignalEmoji(time);
 
-          const crosswalkIcon = L.divIcon({
-            html: `
-              <div style="
-                background: white;
-                border: 2px solid #333;
-                border-radius: 8px;
-                padding: 6px 10px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                text-align: center;
-                min-width: 50px;
-              ">
+          // TMAP 규격에 맞는 HTML 커스텀 마커 빌드
+          const marker = new window.Tmapv2.Marker({
+            position: new window.Tmapv2.LatLng(intersection.lat + dir.latOffset, intersection.lng + dir.lngOffset),
+            iconHTML: `
+              <div style="background: white; border: 2px solid #333; border-radius: 8px; padding: 6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); text-align: center; min-width: 50px;">
                 <div style="font-size: 14px; margin-bottom: 2px;">${dir.emoji}</div>
                 <div style="font-size: 18px; margin-bottom: 2px;">${emoji}</div>
                 <div style="font-weight: bold; font-size: 14px;">${time}초</div>
               </div>
             `,
-            className: "",
-            iconSize: [50, 70],
-            iconAnchor: [25, 35],
+            map: leafletMapRef.current
           });
-
-          const marker = L.marker(
-            [intersection.lat + dir.latOffset, intersection.lng + dir.lngOffset],
-            { icon: crosswalkIcon }
-          ).addTo(leafletMapRef.current!);
-
-          marker.bindPopup(`
-            <div style="padding: 12px;">
-              <strong style="font-size: 14px;">${intersection.itstNm}</strong><br>
-              <span style="font-size: 16px;">${dir.emoji} ${dir.name} 횡단보도</span><br>
-              <div style="margin-top: 8px; font-size: 18px;">
-                ${emoji} <strong>${time}초</strong> 남음
-              </div>
-              <div style="margin-top: 4px; color: #666; font-size: 12px;">
-                ${time > 20 ? '✅ 지금 건너세요!' : time > 0 ? '⚠️ 서두르세요!' : '🛑 대기하세요'}
-              </div>
-            </div>
-          `);
 
           newMarkers.push(marker);
         });
@@ -221,7 +194,7 @@ export function MapPageLeaflet() {
         <button
           onClick={() => {
             if (leafletMapRef.current && currentPosition) {
-              leafletMapRef.current.setView([currentPosition.lat, currentPosition.lng], 15);
+              leafletMapRef.current.setCenter(new window.Tmapv2.LatLng(currentPosition.lat, currentPosition.lng));
             }
           }}
           className="absolute bottom-6 right-6 bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all active:scale-95 z-[1000]"
