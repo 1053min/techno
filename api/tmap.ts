@@ -31,18 +31,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: '서버에 API 키가 설정되지 않았습니다.' });
     }
 
-    // TMap 보행자 경로 탐색 API 엔드포인트
     const tmapUrl = 'https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json';
 
-    // 프론트엔드에서 보낸 데이터(출발지, 목적지 등)를 그대로 TMap 서버로 전달
+    // 🚀 [해결 로직] 프론트엔드에서 보낸 원본 데이터를 복사합니다.
+    const requestBody = { ...req.body };
+
+    // 문자로 넘어왔을 수 있는 좌표를 숫자로 변환
+    const startX = parseFloat(requestBody.startX);
+    const startY = parseFloat(requestBody.startY);
+    const endX = parseFloat(requestBody.endX);
+    const endY = parseFloat(requestBody.endY);
+
+    // 🚀 💡 핵심: 출발지와 도착지가 완벽히 같으면(순환 러닝 코스), 도착지에 약 5m 오차 부여
+    if (startX === endX && startY === endY) {
+      requestBody.endX = (endX + 0.00005).toString(); // TMAP 서버가 다르게 인식하도록 미세 조정
+      console.log('순환 코스 감지됨: TMAP 400 에러 방지를 위해 도착지에 오차(+0.00005)를 부여했습니다.');
+    }
+
+    // 수정된 requestBody를 TMap 서버로 전달
     const response = await fetch(tmapUrl, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'appKey': TMAP_API_KEY, // 서버에 숨겨진 API 키 사용
+        'appKey': TMAP_API_KEY,
       },
-      body: JSON.stringify(req.body),
+      // 원본 req.body가 아니라, 방금 오차를 부여한 requestBody를 문자열로 바꿔서 보냄!
+      body: JSON.stringify(requestBody), 
     });
 
     const data = await response.json();
