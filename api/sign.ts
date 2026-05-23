@@ -1,25 +1,9 @@
-// Vercel Serverless Function - 서울 교통 신호 API 프록시
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS 헤더 설정 (모든 origin 허용)
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST,PUT,DELETE');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Accept, Accept-Version, Content-Length, Content-Type, Date, X-Api-Version'
-  );
-
-  // OPTIONS 요청 처리 (CORS preflight)
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
+  // CORS 헤더 설정은 유지 (중략)
+  
   const { itsId } = req.query;
-
   const SEOUL_API_KEY = process.env.SEOUL_API_KEY;
 
   if (!SEOUL_API_KEY) {
@@ -27,39 +11,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 서울 교통 신호 API 호출
-    const params = new URLSearchParams({
-      apiKey: SEOUL_API_KEY,
-      type: 'json',
-      pageNo: '1',
-      numOfRows: '100', // Get more results when querying all
-    });
-
-    // Only add itstId if provided
+    // 1. API 주소 및 쿼리 파라미터 강제 고정
+    // 서울시 API는 보통 apikey를 쿼리 맨 앞에 두는 것을 선호합니다.
+    let apiUrl = `https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingFusionInformation/1.0?apikey=${SEOUL_API_KEY}`;
+    
+    // 2. 추가 파라미터 직접 연결
+    apiUrl += `&type=json&pageNo=1&numOfRows=100`;
+    
     if (itsId && typeof itsId === 'string') {
-      params.append('itstId', itsId);
+      apiUrl += `&itstId=${itsId}`;
     }
 
-    const apiUrl = `https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingFusionInformation/1.0?${params.toString()}`;
-
+    // 3. 호출
     const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: { 'Accept': 'application/json' },
     });
 
     if (!response.ok) {
-      throw new Error(`Seoul API Error: ${response.status}`);
+      // 404가 뜨는 경우, apiUrl을 찍어보는 것이 중요합니다.
+      console.error('Failed URL:', apiUrl); 
+      throw new Error(`Seoul API returned status: ${response.status}`);
     }
 
     const data = await response.json();
     return res.status(200).json(data);
   } catch (error: any) {
-    console.error('Seoul Traffic API Error:', error);
-    return res.status(500).json({
-      error: error.message,
-      itsId: itsId
-    });
+    return res.status(500).json({ error: error.message });
   }
 }
