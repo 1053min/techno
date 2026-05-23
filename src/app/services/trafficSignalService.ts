@@ -2,7 +2,11 @@ const VERCEL_SIGN_API = 'https://techno-vert.vercel.app/api/sign';
 
 export interface SignalData {
   itstId: string;
-  ntPdsgRmdrCs?: number; stPdsgRmdrCs?: number; etPdsgRmdrCs?: number; wtPdsgRmdrCs?: number;
+  trsmUtcTime: number; // 서버 전송 시간 (시간 동기화용)
+  ntPdsgRmdrCs?: number | null; 
+  stPdsgRmdrCs?: number | null; 
+  etPdsgRmdrCs?: number | null; 
+  wtPdsgRmdrCs?: number | null;
   [key: string]: any;
 }
 
@@ -15,87 +19,76 @@ export const SEOUL_INTERSECTIONS = {
   PUNGNAP: '1029',
 };
 
-const signalCache: Map<string, { data: SignalData; timestamp: number }> = new Map();
+// 교차로 데이터 전체 전역 캐시 변수 추가 (메모리 최적화)
+let globalSignalsCache: any[] = [];
+let lastFetchTime = 0;
+const CACHE_DURATION = 10000; // 10초 동안은 보관된 데이터 재사용 (폴링 주기 고려)
 
-// 💡 요청 및 응답 상태를 확인할 수 있도록 콘솔 로그 추가
-export async function getTrafficSignal(itstId: string): Promise<any | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    
-    const response = await fetch(`${VERCEL_SIGN_API}?itstId=${itstId}`, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-
-    if (!response.ok) return null;
-
-    const rawData = await response.json();
-    
-    // 💡 핵심 패치: 데이터가 배열로 들어오든 객체로 들어오든 유연하게 파싱
-    const dataArray = Array.isArray(rawData) ? rawData : (rawData.data || [rawData]);
-    
-    // itstId가 일치하는 단일 교차로 객체만 완벽히 추출
-    // 💡 교체할 핵심 로직
-    const targetData = dataArray.find((item: any) => String(item.itstId) === String(itstId));
-
-    return targetData || null;
-  } catch (error) {
-    return null;
-  }
-}
-// 기존: export async function getTrafficSignal(itstId: string)
-// 변경: 전체 데이터를 받아온 뒤, 그 안에서 해당 itstId를 찾는 함수로 변경
-// 💡 Vercel API에서 전체 교차로 배열을 통째로 가져오는 함수 (순수 배열 반환)
+// 💡 Vercel API에서 전체 교차로 1000개 배열을 가져오는 함수
 export async function fetchAllTrafficSignals(): Promise<any[]> {
   try {
-    // 💡 URL이 확실한지 다시 확인
-    const url = VERCEL_SIGN_API;
-    
-    const response = await fetch(url, {
+    // 💡 메모리 캐싱 전략: 10초 이내에 다시 호출되면 API 요청 없이 기존 캐시 반환
+    if (globalSignalsCache.length > 0 && Date.now() - lastFetchTime < CACHE_DURATION) {
+      return globalSignalsCache;
+    }
+
+    const response = await fetch(VERCEL_SIGN_API, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        // 💡 CORS 문제를 방지하기 위한 헤더 추가 (가능한 경우)
-      },
+      headers: { 'Accept': 'application/json' },
     });
 
     if (!response.ok) {
-      console.error(`[API] 서버가 에러를 반환함: ${response.status} ${response.statusText}`);
-      return [];
+      console.error(`[API] 서버 에러 상태코드: ${response.status}`);
+      return globalSignalsCache; // 에러 시 이전 캐시라도 반환하여 튕김 방지
     }
     
     const data = await response.json();
-    return Array.isArray(data) ? data : []; 
-
-  } catch (e) {
-    // 💡 여기가 핵심! 브라우저가 왜 fetch를 실패했는지 상세 내용을 콘솔에 출력함
-    console.error("[API] Failed to fetch - 상세 원인:", e);
+    if (Array.isArray(data)) {
+      globalSignalsCache = data;
+      lastFetchTime = Date.now();
+      return globalSignalsCache;
+    }
     return [];
+  } catch (e) {
+    console.error("[API] fetchAllTrafficSignals 실패 상세 원인:", e);
+    return globalSignalsCache;
   }
 }
-export async function updateAllSignals(itstIds: string[] = Object.values(SEOUL_INTERSECTIONS)): Promise<void> {
-  const safeIds = itstIds.slice(0, 50);
-  await Promise.allSettled(safeIds.map(id => getTrafficSignal(id)));
+
+// 💡 대량 데이터셋에서 특정 교차로를 탐색하는 함수로 전환
+export async function getTrafficSignal(itstId: string): Promise<any | null> {
+  try {
+    const allSignals = await fetchAllTrafficSignals();
+    
+    // 명세서 규격에 맞게 itstId 문자열 비교로 데이터 매핑
+    const targetData = allSignals.find((item: any) => String(item.itstId) === String(itstId));
+
+    return targetData || null;
+  } catch (error) {
+    console.error(`[API] getTrafficSignal 탐색 오류 (itstId: ${itstId}):`, error);
+    return null;
+  }
 }
 
-export function getSignalFromCache(itstId: string): SignalData | null {
-  const cached = signalCache.get(itstId);
-  return (cached && Date.now() - cached.timestamp < 10000) ? cached.data : null;
+// 💡 Null 대처 및 센티초 -> 초 변환 함수
+export function centiSecondsToSeconds(centiSeconds: number | undefined | null): number {
+  if (centiSeconds === undefined || centiSeconds === null) return 0; // Null 처리 원칙 반영
+  return centiSeconds / 10;
 }
 
-export function centiSecondsToSeconds(centiSeconds: number | undefined): number {
-  return (centiSeconds || 0) / 10;
-}
-
+// 💡 방향과 신호 종류에 따른 동적 변수 추출
 export function getPedestrianSignalTime(signal: SignalData, direction: 'nt' | 'st' | 'et' | 'wt'): number {
-  const key = `${direction}PdsgRmdrCs` as keyof SignalData;
-  return centiSecondsToSeconds(signal[key] as number);
+  const key = `${direction}PdsgRmdrCs`;
+  return centiSecondsToSeconds(signal[key]);
 }
 
 export function getSignalEmoji(time: number): string {
   if (time > 10) return '🟢';
   if (time > 0) return '🟡';
   return '🔴';
+}
+
+// 기존 인터페이스 호환용 일괄 업데이트 유지
+export async function updateAllSignals(itstIds: string[] = Object.values(SEOUL_INTERSECTIONS)): Promise<void> {
+  await fetchAllTrafficSignals(); // 한 번의 호출로 1000개 캐시 갱신 끝
 }
