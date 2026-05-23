@@ -69,7 +69,7 @@ export function RouteMapPage() {
       });
     };
 
-    const interval = setInterval(updateSignals, 3000);
+    const interval = setInterval(updateSignals, 10000);
     updateSignals();
     return () => { clearInterval(interval); map.remove(); };
   }, [routeInfo]);
