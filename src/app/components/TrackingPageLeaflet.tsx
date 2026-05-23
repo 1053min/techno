@@ -6,7 +6,7 @@ import { Pause, Play, Square, Maximize2, Minimize2 } from "lucide-react";
 
 import { useNavigate,useLocation } from "react-router";
 
-import { getTrafficSignal, SEOUL_INTERSECTIONS, getSignalEmoji, getPedestrianSignalTime, getVehicleSignalTime } from "../services/trafficSignalService";
+import { SEOUL_INTERSECTIONS, getSignalEmoji, getPedestrianSignalTime, getVehicleSignalTime, getSignalFromCache } from "../services/trafficSignalService";
 
 import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
 
@@ -334,7 +334,7 @@ export function TrackingPageLeaflet() {
 
       try {
 
-        const signal = await getTrafficSignal(SEOUL_INTERSECTIONS.SUSEO);
+        const signal = await getSignalFromCache(SEOUL_INTERSECTIONS.SUSEO);
 
         if (signal) {
 
