@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Navigation, Play, MapPin } from "lucide-react";
+import { ArrowLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router";
 import {
   updateAllSignals,
@@ -7,7 +7,7 @@ import {
   getSignalEmoji,
   centiSecondsToSeconds,
 } from "../services/trafficSignalService";
-import { getNearbyIntersections } from "../services/intersectionData";
+import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
 
 declare global {
   interface Window {
@@ -15,272 +15,200 @@ declare global {
   }
 }
 
-// 💡 잠실 코스까지 완벽하게 통합된 데이터셋
-const COURSE_DATA = {
-  hanyang: {
-    name: "한양대 코스",
-    center: { lat: 37.5559, lng: 127.0436 },
-    path: [
-      { lat: 37.5559, lng: 127.0436 },
-      { lat: 37.5575, lng: 127.0460 },
-      { lat: 37.5545, lng: 127.0485 },
-      { lat: 37.5520, lng: 127.0445 },
-      { lat: 37.5535, lng: 127.0405 },
-      { lat: 37.5559, lng: 127.0436 },
-    ]
-  },
-  hanriver: {
-    name: "한강 코스",
-    center: { lat: 37.5284, lng: 127.0682 },
-    path: [
-      { lat: 37.5284, lng: 127.0682 },
-      { lat: 37.5310, lng: 127.0640 },
-      { lat: 37.5345, lng: 127.0675 },
-      { lat: 37.5315, lng: 127.0725 },
-      { lat: 37.5284, lng: 127.0682 },
-    ]
-  },
-  gangnam: {
-    name: "강남 코스",
-    center: { lat: 37.4979, lng: 127.0276 },
-    path: [
-      { lat: 37.4979, lng: 127.0276 },
-      { lat: 37.5005, lng: 127.0315 },
-      { lat: 37.4985, lng: 127.0350 },
-      { lat: 37.4950, lng: 127.0310 },
-      { lat: 37.4979, lng: 127.0276 },
-    ]
-  },
-  jamsil: {
-    name: "잠실 코스",
-    center: { lat: 37.5122, lng: 127.0988 },
-    path: [
-      { lat: 37.5122, lng: 127.0988 },
-      { lat: 37.5100, lng: 127.1020 },
-      { lat: 37.5080, lng: 127.0980 },
-      { lat: 37.5105, lng: 127.0950 },
-      { lat: 37.5122, lng: 127.0988 },
-    ]
-  }
-};
-
-type CourseType = keyof typeof COURSE_DATA;
+// 두 좌표 간의 거리를 구하는 함수 (기존 로직 복구)
+function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + 
+            Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
 
 export function RouteMapPage() {
   const navigate = useNavigate();
   const mapContainerId = "route-tmap-container";
-  
-  const [selectedCourse, setSelectedCourse] = useState<CourseType>("hanyang");
-  
   const tmapRef = useRef<any>(null);
-  const polylineRef = useRef<any>(null);
-  const userMarkerRef = useRef<any>(null);
-  const [, setMarkers] = useState<any[]>([]);
+  
+  const [routeInfo, setRouteInfo] = useState<any>(null);
+  const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100 });
+  const [activeIntersections, setActiveIntersections] = useState<any[]>([]);
 
-  // 1. 지도 최초 초기화
+  const markersRef = useRef<any[]>([]);
+
+  // 1. RoutesPage에서 선택한 경로(GPX 기반 데이터) 불러오기
   useEffect(() => {
-    if (tmapRef.current || !window.Tmapv3) return;
+    const rawData = sessionStorage.getItem('selected_run_route');
+    if (rawData) {
+      setRouteInfo(JSON.parse(rawData));
+    }
+  }, []);
 
-    const currentCourse = COURSE_DATA[selectedCourse];
+  // 2. TMAP 지도 초기화, GPX 경로 드로잉 및 통계 계산
+  useEffect(() => {
+    if (!routeInfo || tmapRef.current || !window.Tmapv3) return;
+
+    // routeInfo.path는 [lng, lat] 구조이므로 TMAP용 [lat, lng]로 변환
+    const startLat = routeInfo.path[0][1];
+    const startLng = routeInfo.path[0][0];
+
     const map = new window.Tmapv3.Map(mapContainerId, {
-      center: new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng),
+      center: new window.Tmapv3.LatLng(startLat, startLng),
       zoom: 15,
       zoomControl: false,
     });
     tmapRef.current = map;
 
-    userMarkerRef.current = new window.Tmapv3.Marker({
-      position: new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng),
-      map: map,
-      iconHTML: `<div style="width: 20px; height: 20px; background: #6366f1; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
-    });
-  }, []);
+    // TMAP용 경로 좌표 배열 생성
+    const tmapPaths = routeInfo.path.map((c: [number, number]) => new window.Tmapv3.LatLng(c[1], c[0]));
 
-  // 2. 코스 변경 시 노선 렌더링 갱신
-  useEffect(() => {
-    if (!tmapRef.current || !window.Tmapv3) return;
-
-    const currentCourse = COURSE_DATA[selectedCourse];
-    tmapRef.current.setCenter(new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng));
-
-    if (userMarkerRef.current) {
-      userMarkerRef.current.setPosition(new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng));
-    }
-
-    if (polylineRef.current) {
-      polylineRef.current.setMap(null);
-    }
-
-    const tmapPaths = currentCourse.path.map(
-      (coord) => new window.Tmapv3.LatLng(coord.lat, coord.lng)
-    );
-
-    polylineRef.current = new window.Tmapv3.Polyline({
+    // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
+    new window.Tmapv3.Polyline({
       path: tmapPaths,
-      strokeColor: "#16a34a",
+      strokeColor: "#4f46e5", // 인디고 컬러
       strokeWeight: 6,
       strokeStyle: "solid",
-      map: tmapRef.current,
+      map: map,
     });
-  }, [selectedCourse]);
 
-  // 3. 10초 동기화
+    // 시작점 마커
+    new window.Tmapv3.Marker({
+      position: new window.Tmapv3.LatLng(startLat, startLng),
+      map: map,
+      iconHTML: `<div style="width: 18px; height: 18px; background: #4f46e5; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
+    });
+
+    // 💡 경로 주변(30m 반경) 교차로 필터링 로직 복구
+    const filteredIntersections = Object.values(INTERSECTION_LOCATIONS).filter(intersection => 
+      routeInfo.path.some((p: [number, number]) => getDistanceKm(p[1], p[0], intersection.lat, intersection.lng) <= 0.03)
+    );
+    setActiveIntersections(filteredIntersections);
+
+    // 총 길이 계산
+    const totalLen = routeInfo.path.reduce((acc: number, _: any, i: number, arr: any[]) => 
+      i < arr.length - 1 ? acc + getDistanceKm(arr[i][1], arr[i][0], arr[i+1][1], arr[i+1][0]) : acc, 0
+    );
+    
+    setStats({ 
+      length: Number(totalLen.toFixed(2)), 
+      intersectionCount: filteredIntersections.length, 
+      successRate: 100 // 추후 백엔드 연동 시 확률 계산
+    });
+
+  }, [routeInfo]);
+
+  // 3. 백엔드 최적화: 10초 주기 전체 신호 대량 동기화
   useEffect(() => {
     updateAllSignals();
     const interval = setInterval(updateAllSignals, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // 4. 주변 마커 및 1초 보정 연산
-  const markersRef = useRef<any[]>([]);
-  const infoWindowRef = useRef<any>(null);
-
+  // 4. 경로 위에 있는 교차로만 TMAP 마커로 띄우고 1초 실시간 카운트다운 적용
   useEffect(() => {
-    if (!tmapRef.current) return;
+    if (!tmapRef.current || activeIntersections.length === 0) return;
 
-    if (!infoWindowRef.current) {
-      infoWindowRef.current = new window.Tmapv3.InfoWindow({
-        type: 2,
-        border: '0px solid #FF0000',
-        background: false,
-        visible: false,
-        map: tmapRef.current
-      });
-    }
-
-    const updateRouteSignalMarkers = () => {
+    const updateSignals = () => {
+      // 기존 마커 초기화
       markersRef.current.forEach((marker) => marker.setMap(null));
       const newMarkers: any[] = [];
-      const currentCenter = COURSE_DATA[selectedCourse].center;
-      const nearby = getNearbyIntersections(currentCenter.lat, currentCenter.lng, 3);
 
-      nearby.slice(0, 12).forEach(intersection => {
+      activeIntersections.forEach((intersection) => {
         const signal = getSignalFromCache(intersection.itstId);
-        if (!signal) return;
+        const isAvailable = !!signal;
+        let htmlContent = '';
 
-        const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
-        const directions = [
-          { key: 'ntPdsgRmdrCs', name: '북쪽', latOffset: 0.0002, lngOffset: 0, emoji: '↑' },
-          { key: 'stPdsgRmdrCs', name: '남쪽', latOffset: -0.0002, lngOffset: 0, emoji: '↓' },
-          { key: 'etPdsgRmdrCs', name: '동쪽', latOffset: 0, lngOffset: 0.0002, emoji: '→' },
-          { key: 'wtPdsgRmdrCs', name: '서쪽', latOffset: 0, lngOffset: -0.0002, emoji: '←' },
-        ];
-
-        directions.forEach(dir => {
-          const rawTimeCs = signal[dir.key as keyof typeof signal];
-          if (rawTimeCs === undefined || rawTimeCs === null) return;
-
-          const baseTime = centiSecondsToSeconds(rawTimeCs as number);
+        if (isAvailable) {
+          // 오차 보정 로직 적용
+          const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
+          // 대표 방향(동서남북 중 데이터가 있는 첫 번째 것) 추출 로직 (MVP용)
+          const directions = ['ntPdsgRmdrCs', 'stPdsgRmdrCs', 'etPdsgRmdrCs', 'wtPdsgRmdrCs'];
+          let validTimeCs = 0;
+          
+          for (const dir of directions) {
+            if (signal[dir] !== undefined && signal[dir] !== null) {
+              validTimeCs = signal[dir];
+              break;
+            }
+          }
+          
+          const baseTime = centiSecondsToSeconds(validTimeCs);
           const adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
           const emoji = getSignalEmoji(adjustedTime);
-          const latLng = new window.Tmapv3.LatLng(intersection.lat + dir.latOffset, intersection.lng + dir.lngOffset);
 
-          const marker = new window.Tmapv3.Marker({
-            position: latLng,
-            map: tmapRef.current,
-            iconHTML: `
-              <div style="background: white; border: 2px solid #16a34a; border-radius: 8px; padding: 6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); text-align: center; min-width: 50px; transform: translate(-50%, -100%);">
-                <div style="font-size: 11px; color: #16a34a; font-weight: bold; margin-bottom: 1px;">추천코스</div>
-                <div style="font-size: 15px; margin-bottom: 2px;">${emoji} ${adjustedTime}초</div>
-              </div>
-            `
-          });
+          htmlContent = `
+            <div style="background: white; border: 2px solid #4f46e5; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 12px; transform: translate(-50%, -100%); white-space: nowrap;">
+              <span>${emoji}</span>
+              <span style="color: #374151;">${adjustedTime}초</span>
+            </div>
+          `;
+        } else {
+          // 데이터가 없을 때 (대기중)
+          htmlContent = `
+            <div style="background: #9ca3af; border: 2px solid #4b5563; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 11px; color: white; transform: translate(-50%, -100%); white-space: nowrap;">
+              ⚪ 대기중
+            </div>
+          `;
+        }
 
-          marker.on("Click", () => {
-            const popupContent = `
-              <div style="padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -100%); margin-top: -20px; white-space: nowrap;">
-                <strong style="font-size: 14px; color: #16a34a;">🏃‍♂️ 코스 내 교차로</strong><br>
-                <strong style="font-size: 14px;">${intersection.itstNm}</strong><br>
-                <span style="font-size: 15px;">${dir.emoji} ${dir.name} 횡단보도</span><br>
-                <div style="margin-top: 8px; font-size: 18px;">${emoji} <strong>${adjustedTime}초</strong> 남음</div>
-              </div>
-            `;
-            infoWindowRef.current.setContent(popupContent);
-            infoWindowRef.current.setPosition(latLng);
-            infoWindowRef.current.setVisible(true);
-          });
-          newMarkers.push(marker);
+        const marker = new window.Tmapv3.Marker({
+          position: new window.Tmapv3.LatLng(intersection.lat, intersection.lng),
+          map: tmapRef.current,
+          iconHTML: htmlContent,
         });
+
+        newMarkers.push(marker);
       });
-      setMarkers(newMarkers);
+
       markersRef.current = newMarkers;
     };
 
-    updateRouteSignalMarkers();
-    const interval = setInterval(updateRouteSignalMarkers, 1000);
+    updateSignals();
+    const interval = setInterval(updateSignals, 1000);
     return () => clearInterval(interval);
-  }, [selectedCourse]);
+  }, [activeIntersections]);
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="bg-white border-b border-border px-6 py-4 z-10 shadow-sm">
-        <div className="max-w-md mx-auto flex flex-col gap-3">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-secondary rounded-full">
-              <ArrowLeft className="size-6" />
-            </button>
-            <div className="flex-1">
-              <h2 className="mb-0 text-lg font-bold">추천 러닝 코스 탐색</h2>
-              <p className="text-xs text-muted-foreground">인도 중심 다각형 경로 및 신호등 잔여 시간 예측</p>
-            </div>
-          </div>
-          
-          <div className="flex bg-slate-100 p-1 rounded-xl w-full overflow-x-auto">
-            {(Object.keys(COURSE_DATA) as CourseType[]).map((key) => (
-              <button
-                key={key}
-                onClick={() => {
-                  if(infoWindowRef.current) infoWindowRef.current.setVisible(false);
-                  setSelectedCourse(key);
-                }}
-                className={`flex-1 flex items-center justify-center gap-1 text-xs py-2.5 font-semibold rounded-lg transition-all min-w-[75px] ${
-                  selectedCourse === key
-                    ? "bg-white text-emerald-600 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <MapPin className="size-3.5" />
-                {COURSE_DATA[key].name}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="flex flex-col h-screen w-full bg-slate-50 relative">
+      {/* 💡 상단 헤더 (독립된 페이지로 구성, 탭 제거) */}
+      <div className="p-4 bg-white border-b flex items-center gap-3 z-10 shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
+          <ArrowLeft className="size-5" />
+        </button>
+        <h2 className="font-black text-lg text-slate-800 mb-0">{routeInfo?.name || "로딩 중..."}</h2>
       </div>
 
-      <div className="flex-1 relative">
+      {/* TMAP 영역 */}
+      <div className="flex-1 w-full relative z-0">
         <div id={mapContainerId} className="w-full h-full" />
+      </div>
 
-        <div className="absolute bottom-28 left-6 bg-white rounded-2xl p-4 shadow-lg z-[1000]">
-          <div className="text-sm font-medium mb-2 text-emerald-600">
-            🟢 {COURSE_DATA[selectedCourse].name} 연동 중
+      {/* 📊 하단 패널: 통계 및 러닝 시작 버튼 (기존 로직 및 레이아웃 유지 + 디자인 업그레이드) */}
+      <div className="absolute bottom-6 left-4 right-4 z-[1000] flex flex-col gap-3">
+        <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 flex justify-between items-center px-6">
+          <div className="text-center">
+            <p className="text-[11px] text-slate-500 font-medium mb-0.5">총 길이</p>
+            <p className="font-black text-lg text-slate-800">{stats.length}km</p>
           </div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center gap-2"><span>🟢</span><span>초록불 (진입 권장)</span></div>
-            <div className="flex items-center gap-2"><span>🔴</span><span>빨간불 (서행 및 대기)</span></div>
+          <div className="h-8 w-px bg-slate-200"></div>
+          <div className="text-center">
+            <p className="text-[11px] text-slate-500 font-medium mb-0.5">거치는 교차로</p>
+            <p className="font-black text-lg text-slate-800">{stats.intersectionCount}곳</p>
+          </div>
+          <div className="h-8 w-px bg-slate-200"></div>
+          <div className="text-center">
+            <p className="text-[11px] text-slate-500 font-medium mb-0.5">무정지율</p>
+            <p className="font-black text-lg text-indigo-600">{stats.successRate}%</p>
           </div>
         </div>
 
         <button
-          onClick={() => {
-            if (tmapRef.current) {
-              const currentCourse = COURSE_DATA[selectedCourse];
-              tmapRef.current.setCenter(new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng));
-            }
-          }}
-          className="absolute bottom-28 right-6 bg-white border border-border rounded-full p-4 shadow-md z-[1000]"
+          onClick={() => navigate("/tracking", { state: { routeInfo } })}
+          className="w-full bg-indigo-600 text-white font-black text-lg py-4 rounded-2xl shadow-xl hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
-          <Navigation className="size-6 text-primary" />
+          <Play className="size-5 fill-white" />
+          러닝 시작하기
         </button>
-
-        <div className="absolute bottom-8 left-0 right-0 flex justify-center px-6 z-[1000]">
-          <button
-            onClick={() => navigate("/tracking")} 
-            className="w-full max-w-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2.5"
-          >
-            <Play className="size-5 fill-white" />
-            {COURSE_DATA[selectedCourse].name} 시작하기
-          </button>
-        </div>
       </div>
     </div>
   );
