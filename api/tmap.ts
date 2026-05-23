@@ -22,6 +22,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
+        'Accept': 'application/json',
+        'Accept-Encoding': 'identity', // 💡 압축을 사용하지 않도록 강제 (에러 방지)
         'appKey': TMAP_API_KEY! 
       },
       body: JSON.stringify(body),
