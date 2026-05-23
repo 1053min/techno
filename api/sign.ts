@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // 1. 규격에 맞춘 기본 URL (Fusion 제거한 버전)
-    const baseUrl = 'https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingInformation/1.0';
+    const baseUrl = 'http://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingInformation/1.0';
 
     // 2. 파라미터 구성 (모두 소문자로 구성)
     // 규격대로 apiKey를 'apikey'로 설정
