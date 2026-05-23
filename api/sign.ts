@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // 2. 파라미터명 확인 (공공데이터 포털은 보통 apiKey 또는 serviceKey를 사용합니다)
 // 일단 serviceKey로 시도해 보시고, 안 되면 apikey로 변경하세요.
-    let apiUrl = `${baseUrl}?serviceKey=${SEOUL_API_KEY}&type=json&pageNo=1&numOfRows=100`;
+    let apiUrl = `${baseUrl}?apiKey=${SEOUL_API_KEY}&type=json&pageNo=1&numOfRows=100`;
 
     if (itsId && typeof itsId === 'string') {
       apiUrl += `&itstId=${itsId}`;
