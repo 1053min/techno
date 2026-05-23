@@ -1,0 +1,1820 @@
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    
+
+
+
+    <title>T Data 서울교통빅데이터플랫폼</title>
+    
+    <meta name="apple-mobile-web-app-title" content="서울시 교통빅데이터플랫폼">
+    <meta name="descripption" content="서울시 교통빅데이터 제공 창구입니다." />
+    <meta property="og:title" content="서울시 교통빅데이터플랫폼">
+    <meta name="keywords" content="서울시 교통빅데이터플랫폼" />
+    <meta property="og:description" content="서울시 교통빅데이터 제공 창구입니다.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="shortcut icon" href="/assets/images/favicon.ico" />
+    <link rel="apple-touch-icon" href="/assets/images/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="/assets/css/index.css" />
+    <script rel="dns-prefetch" type="text/javascript" src="//www.seoul.go.kr/seoulgnb/gnb.js"></script>
+    <style>
+        .mstatus_mark {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 400;
+            color: #fff;
+            height: 24px;
+            padding: 0 6px;
+            border-radius: 4px;
+            background: #39C613;
+        }
+        .mstatus_mark.slow {
+            background: #BF5300;
+        }
+        .mstatus_mark.heavy {
+            background: #D62E22;
+        }
+
+        .slide_bg.hover {
+            height: 400px;
+        }
+
+        h2{
+            text-align: center;
+        }
+        .modal {
+            display: none;
+            position: absolute;
+            top:0;
+            left: 0;
+            width: 100%;
+            height: 4000px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.5);
+            z-index: 997;
+        }
+        .modal .modal_popup {
+            position: absolute;
+            /*top: 5%;*/
+            top: 10%;
+            /*left: 25%;*/
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 20px;
+            z-index: 998;
+        }
+        .modal .modal_popup .close_btn {
+            padding: 10px 20px;
+            background-color: rgb(116, 0, 0);
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+            z-index: 998;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="wrap">
+        
+
+
+<div id="menu_skip">
+    <a href="#naviGation"><span>메인메뉴 바로가기</span></a>
+    <a href="#mainContents"><span>본문 바로가기</span></a>
+</div>
+<header class="header">
+    <!-- seoulgnb 는 live server 로 열면 확인가능 -->
+    <div id="seoul-common-gnb"></div>
+    <!-- seoulgnb End -->
+    <div class="header_line">
+        <div class="slide_bg"></div>
+        <div class="header_inner">
+            <div class="hedaer_left">
+                <h1>
+                    <a href="/" class="hedaer_logo" title="메인화면 바로가기">
+                        <img src="/assets/images/header_logo.svg" alt="T Data 서울시 교통빅데이터플랫폼" />
+                    </a>
+                </h1>
+            </div>
+            <nav id="naviGation" class="header_center" title="전체메뉴">
+                <ul class="header_menu_list">
+                    <li class="slidedown_menu" title="데이터제공 메뉴">
+                        <a href="javascript:moveMenu('/dataprovide/vizsearch.do', 'MENU_DATAPROVIDE_01')" class="header_nav_text" title="데이터제공">데이터제공</a>
+                        <ul title="데이터제공" class="sub_slidedown_menu">
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/dataprovide/vizsearch.do', 'MENU_DATAPROVIDE_01')" class="slidedown_anchor" title="시각화 검색">시각화 검색</a>
+                            </li>
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/dataprovide/trafficdatalist.do', 'MENU_DATAPROVIDE_02')" class="slidedown_anchor" title="교통빅데이터 검색">교통빅데이터 검색</a>
+                            </li>
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/dataprovide/datastatus.do', 'MENU_DATAPROVIDE_03')" class="slidedown_anchor" title="데이터 현황">데이터 현황</a>
+                            </li>
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/dataprovide/populardata.do', 'MENU_DATAPROVIDE_04')" class="slidedown_anchor" title="인기 데이터">인기 데이터</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="slidedown_menu" title="데이터활용 메뉴">
+                        <a href="javascript:moveMenu('/datause/analysistype.do', 'MENU_DATAUSE_01')" class="header_nav_text" title="데이터활용">데이터활용</a>
+                        <ul title="데이터활용" class="sub_slidedown_menu">
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/datause/analysistype.do', 'MENU_DATAUSE_01')" class="slidedown_anchor" title="유형별 분석">유형별 분석</a>
+                            </li>
+                            
+							
+                            
+                        </ul>
+                    </li>
+                    <li class="slidedown_menu" title="소통 메뉴">
+                        <a href="javascript:moveMenu('/board/notice/list.do', 'MENU_BOARD_01')" class="header_nav_text" title="소통">소통</a>
+                        <ul title="소통" class="sub_slidedown_menu">
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/board/notice/list.do', 'MENU_BOARD_01')" class="slidedown_anchor" title="공지사항">공지사항</a>
+                            </li>
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/board/faq/list.do', 'MENU_BOARD_02')" class="slidedown_anchor" title="자주묻는질문">자주묻는질문</a>
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    <li class="slidedown_menu" title="이용안내 메뉴">
+                        <a href="javascript:moveMenu('/userguide/tdataintroduce.do', 'MENU_USERGUIDE_01')" class="header_nav_text" title="이용안내">이용안내</a>
+                        <ul title="이용안내" class="sub_slidedown_menu">
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/userguide/tdataintroduce.do', 'MENU_USERGUIDE_01')" class="slidedown_anchor" title="T-DATA 소개">T-DATA 소개</a>
+                            </li>
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/userguide/trafficpolicy.do', 'MENU_USERGUIDE_02')" class="slidedown_anchor" title="데이터 이용정책">데이터 이용정책</a>
+                            </li>
+                            <li class="slidedown_list">
+                                <a href="javascript:moveMenu('/userguide/guideopenapi.do', 'MENU_USERGUIDE_03')" class="slidedown_anchor" title="Open API 이용안내">Open API 이용안내</a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                </ul>
+            </nav>
+
+            <div class="header_right" title="고객정보 팝업">
+                
+                    
+                    
+                        <ul class="memeber_head_login">
+
+
+
+                            <li>
+                                <a href="/sso/login.do" class="login_anchor" title="서울시 통합 로그인 바로가기">로그인</a>
+                            </li>
+                            <li>
+                                <a href="https://www.seoul.go.kr/member/join/regist01.do" target="_blank" rel="dns-prefetch" class="login_anchor" title="서울시 통합 회원가입 새창열기">서울시 통합 회원가입</a>
+                                
+                            </li>
+                        </ul>
+                    
+                
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+
+        function moveMenu(hrefUrl, accessMenuType) {
+            // 메뉴 접근 이력 저장 후, 페이지 이동.
+            $.ajax({
+                  url: "/system/datausage/save.do"
+                , data: JSON.stringify({ accessMenuType })
+                , method: 'POST'
+                , dataType : "json"
+                , contentType: "application/json"
+                , cache: false
+                , complete: function () {
+                    location.href = hrefUrl;
+                }
+            })
+        }
+
+        // 로그아웃
+        function onClickLogout() {
+            //새 창 띄우고 바로 닫기
+            const logout_window = window.open("https://www.seoul.go.kr/member/userlogin/logOut.do");
+            logout_window.close();
+
+            location.href='/sso/logout.do'
+        }
+
+        // 신청데이터 건수
+        function getReportAllNotAppCnt() {
+            //페이지 끝인지 체크
+            $.ajax({
+                url: "/main/getReportAllNotAppCnt.do"
+                , type: 'POST'
+                , data: ''
+                , dataType: 'text'
+                , cache: false
+                , success : function (result) {
+                    $('.alram_number').text(result);
+                }
+                , error: function (request, status, error) {
+                    console.log(error);
+                }
+            });
+        }
+    </script>
+</header>
+
+
+        <input type="hidden" id="hdd_existYn" value="">
+        <main id="mainContents" class="sub_contents">
+
+            <div class="row_box">
+                <!-- 경로 및 타이틀 -->
+                
+
+
+
+
+    <div class="detailList_summary">
+        <div title="리스트 상세 제목" class="summary_column_full">
+            <div class="document_information_column m-b-20">
+                <span id="supportType" class="hidden_tag">제공유형</span>
+                <div class="document_label_row">
+                    <p class="data_slider_label on"> OPEN API
+					    <!--
+					        
+					        OPEN API
+					    -->
+					</p>
+                    <p class="data_slider_label">
+                        
+                            
+                            JSON
+                        
+                    </p>
+                </div>
+            </div>
+            <h2 class="summary_title">신호제어기 신호 잔여시간 정보서비스</h2>
+            <p class="summary_description lh_24">
+                신호제어기에서 발생하는 신호현시 및 잔여시간 정보 제공
+            </p>
+        </div>
+    </div>
+
+
+				
+                <!--  상세내용 -->
+                
+
+
+
+
+    <section class="sub_cont_group m-t-80">
+        <div class="subtitle_withbtn">
+            <h3 id="detailInformation" class="sub_contents_title">
+                상세 정보
+            </h3>
+        </div>
+        <div class="detail_info_table">
+            <span id="detailTable" class="hidden_tag">상세 정보</span>
+            <div>
+                <div class="table_grid_fourparts">
+                    <div class="table_th">서비스명</div>
+                    <div class="table_td">신호제어기 신호 잔여시간 정보서비스</div>
+                    <div class="table_th">활용신청수</div>
+                    <div class="table_td">113</div>
+                </div>
+                <div class="table_grid_fourparts">
+                    <div class="table_th">공개일자</div>
+                    <div class="table_td">2024-08-22</div>
+                    <div class="table_th">수정일자</div>
+                    <div class="table_td">2024-08-22</div>
+                </div>
+                <div class="table_grid_fourparts">
+                    <div class="table_th">업데이트 주기</div>
+                    <div class="table_td">실시간</div>
+                    <div class="table_th">유형분류</div>
+                    <div class="table_td">C-ITS</div>
+                </div>
+                <div class="table_grid_fourparts">
+                    <div class="table_th">제공기관</div>
+                    <div class="table_td">C-ITS</div>
+                    <div class="table_th">제공부서</div>
+                    <div class="table_td">미래첨단교통과</div>
+                </div>
+                <div class="table_grid_fourparts">
+                    <div class="table_th">서비스유형</div>
+                    <div class="table_td"></div>
+                    <div class="table_th">담당자</div>
+                    <div class="table_td">소관수</div>
+                </div>
+                <div class="table_grid_twoparts">
+                    <div class="table_th">저작권정책</div>
+                    <div class="table_td cc_td">
+                        <img src="/assets/images/cc_by.png" alt="저작자 표시(BY)" />
+                        
+                        <!--
+                        저작권자표시(BY) : 이용이나 변경 및 2차적 저작물의 작성을 포함한 자유이용을 허락합니다.
+                        -->
+                    </div>
+                </div>
+                <div class="table_grid_twoparts">
+                    <div class="table_th">키워드</div>
+                    <div class="table_td fc_black60">신호제어기에서 발생하는 신호현시 및 잔여시간 정보 제공</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+
+                <!--   OPEN API 활용 -->
+				
+				    
+				    
+						
+
+
+
+
+    <section aria-labelledby="fileDatas" class="sub_cont_group m-t-80">
+        <div class="subtitle_withbtn">
+            <h3 id="fileDatas" class="sub_contents_title">
+                Open API활용
+            </h3>
+            <div class="btn_gap">
+				
+					<button type="button" class="btn_line_gray large" onclick="location.href='/dataprovide/download.do?id=10000'" title="신호제어기 잔여시간 정보 서비스 설명서" />
+					    설명서 다운로드
+					</button>
+				
+                <button type="button" class="btn_line_gray large" onclick="location.href='/userguide/guideopenapi.do'" title="Open API 이용안내 바로가기" />
+                    Open API 이용안내
+                </button>
+                
+                    
+                    
+                        
+                        
+                    
+                
+                <button type="button" class="btn_primary large btn_download" onclick="user_login()" title="로그인 체크하기" />
+                    활용신청
+                </button>
+            </div>
+        </div>
+        <div class="roundary_table_box">
+            <div class="dflx_ac_jbet">
+                <p class="fs_18_bold">요청인자</p>
+            </div>
+            <div class="scroll_table scroll detailList_mt m-b-32" tabindex="-1">
+                <table class="data_table">
+                    <caption class="hidden_tag">요청인자 목록</caption>
+                    <colgroup>
+                        <col style="width:160px">
+                        <col style="width:160px">
+                        <col style="width:auto">
+                        <col style="width:110px">
+                        <col style="width:210px">
+                        <col style="width:210px">
+                        <col style="width:210px">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">변수명</th>
+                            <th scope="col">타입</th>
+                            <th scope="col">필수 여부</th>
+                            <th scope="col">변수 크기</th>
+                            <th scope="col">변수 설명</th>
+                            <th scope="col">값 설명</th>
+                            <th scope="col">샘플데이터</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                        <tr>
+                            <td>apiKey</td>
+                            <td></td>
+                            <td>필</td>
+                            <td>-</td>
+                            <td>인증키</td>
+                            <td class="tal">서울교통데이터포털에서 발급받은 인증키</td>
+                            <td class="tal">인증키</td>
+                        </tr>
+                        
+                        <tr>
+                            <td>type</td>
+                            <td></td>
+                            <td></td>
+                            <td>-</td>
+                            <td>매체유형</td>
+                            <td class="tal">xml/json json이 기본값</td>
+                            <td class="tal">json</td>
+                        </tr>
+                        
+                        <tr>
+                            <td>pageNo</td>
+                            <td></td>
+                            <td></td>
+                            <td>-</td>
+                            <td>페이지 번호</td>
+                            <td class="tal">페이지 번호</td>
+                            <td class="tal">1</td>
+                        </tr>
+                        
+                        <tr>
+                            <td>numOfRows</td>
+                            <td></td>
+                            <td></td>
+                            <td>-</td>
+                            <td>페이지당 데이터 개수</td>
+                            <td class="tal">페이지당 데이터 개수</td>
+                            <td class="tal">10</td>
+                        </tr>
+                        
+                        <tr>
+                            <td>itstId</td>
+                            <td></td>
+                            <td></td>
+                            <td>-</td>
+                            <td>교차로 ID</td>
+                            <td class="tal">교차로 ID</td>
+                            <td class="tal">1537</td>
+                        </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+            <div class="dflx_ac_jbet">
+                <p class="fs_18_bold">출력인자</p>
+            </div>
+            <div class="scroll_table scroll detailList_mt m-b-32" tabindex="-1">
+                <table class="data_table">
+                    <caption class="hidden_tag">출력인자 목록</caption>
+                    <colgroup>
+                        <col style="width:160px">
+                        <col style="width:160px">
+                        <col style="width:auto">
+                        <col style="width:110px">
+                        <col style="width:210px">
+                        <col style="width:210px">
+                        <col style="width:210px">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">변수명</th>
+                            <th scope="col">타입</th>
+                            <th scope="col">필수 여부</th>
+                            <th scope="col">변수 크기</th>
+                            <th scope="col">변수 설명</th>
+                            <th scope="col">값 설명</th>
+                            <th scope="col">샘플데이터</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                             <tr>
+                                <td>swUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남서_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>서쪽_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>서쪽_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>서쪽_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtPdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>서쪽_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>서쪽_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>서쪽_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td>북서_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>rgtrId</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td>등록자ID</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>regDt</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td>등록일시</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>서쪽_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>dataId</td>
+                                <td></td>
+                                <td>필</td>
+                                <td>50</td>
+                                <td>데이터ID</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>trsmUtcTime</td>
+                                <td></td>
+                                <td></td>
+                                <td>13,0</td>
+                                <td>전송UTC시간</td>
+                                <td class="tal">timestamp형식</td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>trsmYear</td>
+                                <td></td>
+                                <td></td>
+                                <td>4</td>
+                                <td>패킷전송년도</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>trsmMt</td>
+                                <td></td>
+                                <td></td>
+                                <td>2</td>
+                                <td>패킷전송월</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>trsmDy</td>
+                                <td></td>
+                                <td></td>
+                                <td>2</td>
+                                <td>패킷전송일</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>trsmTm</td>
+                                <td></td>
+                                <td></td>
+                                <td>6</td>
+                                <td>패킷전송시간</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>trsmMs</td>
+                                <td></td>
+                                <td></td>
+                                <td>4</td>
+                                <td>패킷전송밀리초</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>itstId</td>
+                                <td></td>
+                                <td></td>
+                                <td>5</td>
+                                <td>교차로ID</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>eqmnId</td>
+                                <td></td>
+                                <td></td>
+                                <td>15</td>
+                                <td>장비ID</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북쪽_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북쪽_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북쪽_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남동_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북쪽_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntPdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북쪽_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북쪽_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>동쪽_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>동쪽_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>동쪽_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etPdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>동쪽_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>동쪽_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>동쪽_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남쪽_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남쪽_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남쪽_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stPdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남쪽_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남쪽_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남쪽_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>서쪽_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>서쪽_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtPdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>서쪽_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>서쪽_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>wtUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>서쪽_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북동_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북동_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북동_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nePdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북동_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북동_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북동_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남동_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남동_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>sePdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남동_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남동_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남동_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남서_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남서_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남서_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swPdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남서_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남서_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swUtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>남서_유턴신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwBssgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북서_버스신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwBcsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북서_자전거신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwLtsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북서_좌회전신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwPdsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북서_보행신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwStsgStatNm</td>
+                                <td></td>
+                                <td></td>
+                                <td>30</td>
+                                <td>북서_직진신호_상태_명</td>
+                                <td class="tal"></td>
+                                <td class="tal">인증키,json,1,10</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>동쪽_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>동쪽_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>동쪽_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etPdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>동쪽_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>동쪽_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>etUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>동쪽_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>msgCreatDs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>메시지 생성 시간</td>
+                                <td class="tal"></td>
+                                <td class="tal">9700</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>msgCreatMin</td>
+                                <td></td>
+                                <td></td>
+                                <td>6,0</td>
+                                <td>메시지 생성 분</td>
+                                <td class="tal"></td>
+                                <td class="tal">448036</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북동_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북동_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북동_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nePdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북동_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북동_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>neUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북동_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북쪽_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북쪽_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal">817</td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북쪽_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntPdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북쪽_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북쪽_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>ntUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북쪽_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북서_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북서_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북서_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwPdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북서_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북서_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>nwUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>북서_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남동_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남동_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남동_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>sePdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남동_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남동_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>seUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남동_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남쪽_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남쪽_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남쪽_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stPdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남쪽_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남쪽_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>stUtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남쪽_유턴신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swBcsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남서_자전거신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swBssgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남서_버스신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swLtsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남서_좌회전신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swPdsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남서_보행신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                             <tr>
+                                <td>swStsgRmdrCs</td>
+                                <td></td>
+                                <td></td>
+                                <td>5,0</td>
+                                <td>남서_직진신호_잔여_센티초</td>
+                                <td class="tal">해당 방향 신호 잔여 시간(1/10초)</td>
+                                <td class="tal"></td>
+                            </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+            <div role="tablist" title="Sample 설명 탭" class="main_tab_list tab_btn_list m-b-32">
+                <button type="button" id="Sample" tabindex="0"
+                class="search_tab_category trans tab_btn tabid_sample_tabPanel tabEventTrue on" title="샘플 URL 선택됨">
+                    샘플 URL
+                </button>
+                <button type="button" id="Message" tabindex="0"
+                class="search_tab_category trans tab_btn tabid_message_tabPanel tabEventFalse" title="메시지 설명 선택안됨">
+                    메시지 설명
+                </button>
+            </div>
+            <div id="sample_tabPanel" class="tabpanel">
+                <table class="horizontal_table">
+                    <caption class="hidden_tag">서울시 OPEN API 샘플URL</caption>
+                    <thead class="thead_hidden">
+                        <tr>
+                            <th scope="col">구분</th>
+                            <th scope="col">내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row" class="sample_table_th">샘플URL</th>
+                            <td>https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingFusionInformation/1.0</td>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="sample_table_th">샘플 미리보기</th>
+                            <td>
+                                
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="message_tabPanel" class="tabpanel" hidden>
+                
+            </div>
+        </div>
+    </section>
+    <button type="button" class="btn_historyback btn_line_gray large" onclick=window.location.href='/dataprovide/trafficdatalist.do' title="목록으로 이동">
+        목록으로
+    </button>
+
+
+				    
+				
+                
+                
+                
+                
+            </div>
+        </main>
+
+        
+
+
+
+	<footer class="footer">
+		<div class="row_box footer_box">
+			<a href="/" title="메인화면 바로가기" class="footer_logo">
+				<img src="/assets/images/footer_logo.svg" alt="T Data 서울교통빅데이터플랫폼" />
+			</a>
+			<article class="footer_text">
+				<ul class="footer_pagelist">
+					<li>
+						<a href="/userguide/tdataintroduce.do" class="footer_sitemap" title="T-DATA 소개 바로가기">T-DATA 소개</a>
+					</li>
+					<li>
+						<a href="https://www.seoul.go.kr/helper/privacy.do?type=www" target="_blank" rel="dns-prefetch" class="footer_sitemap" title="서울시 개인정보처리방침 새창열기">개인정보처리방침</a>
+					</li>
+					
+					<li>
+						<a href="https://www.seoul.go.kr/helper/email.do" target="_blank" rel="dns-prefetch" class="footer_sitemap" title="서울시 이메일무단수집거부 새창열기">이메일무단수집거부</a>
+					</li>
+					<li>
+						<a href="https://www.seoul.go.kr/homepageCorrect/user/hpCorrect.do" target="_blank" rel="dns-prefetch" class="footer_sitemap" title="서울시 누리집바로잡기 새창열기">홈페이지바로잡기</a>
+					</li>
+				</ul>
+				<address title="주소" class="footer_address fc_black60">서울특별시청 04524 서울특별시 중구 세종대로 110</address>
+				<p title="Copyright" class="fc_black60 lh_1">COPYRIGHT ©서울시청 ALL RIGHTS RESERVED</p>
+			</article>
+			<div class="m-l-a" style="display: flex;float: left;">
+				<div>
+					<!-- 기존소스
+					<iframe id='fe709c65' name='fe709c65' width='376' height='129' style='border:none' title="서울시에서 제공하는 유용한 생활정보 홍보물 이미지, 클릭 시 해당 내용으로 이동함">
+						<a href='https://delivery.dighty.com/www/delivery/ck.php?n=fe709c65&amp;cb=INSERT_RANDOM_NUMBER_HERE' target='_blank' rel='noopener noreferrer'><img src='https://delivery.dighty.com/www/delivery/avw.php?zoneid=1131&amp;cb=INSERT_RANDOM_NUMBER_HERE&amp;n=fe709c65' alt='' /></a>
+					</iframe>
+					-->
+					<!--변경_20260312-->
+					<iframe id='fe709c65' name='fe709c65' width='376' height='129' style='border:none' overflow= 'hidden' scrolling='no' title="서울시에서 제공하는 유용한 생활정보 홍보물 이미지, 클릭 시 해당 내용으로 이동함">
+						<img src="/assets/images/test_footer_image.png" alt="서울시홍보물이미지" />
+					</iframe>
+					<!--기존_20260312-->
+					<!--<div id="delivery_container" style="width:376px; height:129px; border:none;" title="서울시에서 제공하는 유용한 생활정보 홍보물 이미지, 클릭 시 해당 내용으로 이동함">
+						<img src="/assets/images/test_footer_image.png" alt="서울시홍보물이미지" />
+					</div>-->
+				</div>
+				<div style="padding-left: 20px;">
+					<!-- 접근성 인증마크 들어갈자리 -->
+					<a title="새창" href="https://www.wa.or.kr/board/list.asp?search=total&SearchString=%BC%AD%BF%EF%B1%B3%C5%EB%BA%F2%B5%A5%C0%CC%C5%CD%C7%C3%B7%A7%C6%FB&BoardID=0006" target="_blank">
+						<img class="wa" alt="(사)한국장애인단체총연합회 한국웹접근성인증평가원 웹 접근성 우수사이트 인증마크(WA인증마크)" src="/assets/images/wa_mark.png" width="80" height="48" />
+					</a>
+				</div>
+			</div>
+		</div>
+	</footer>
+	<script type='text/javascript'>
+		//var iframeUrl = 'https://www.seoul.go.kr/main/index.jsp';
+		var iframeUrl = 'https://delivery.dighty.com/www/delivery/afr.php?zoneid=1131&amp;cb=INSERT_RANDOM_NUMBER_HERE&amp;n=fe709c65';
+				
+		window.addEventListener('DOMContentLoaded', function() {
+			var m3_b = ''; 
+			if(document.cookie.indexOf('ACEUACS=')>-1){
+				var m3_b=document.cookie.substr(document.cookie.indexOf('ACEUACS=') + 8, 19);
+				iframeUrl = 'https://delivery.dighty.com/www/delivery/afr.php?zoneid=1131&bd='+m3_b+'&cb=INSERT_RANDOM_NUMBER_HERE';
+			}
+			
+			//변경_20260312
+			document.getElementById('fe709c65').src=iframeUrl;
+			//document.getElementById('fe709c65').src=iframeUrl;
+			
+			//기존_20260312
+			/*fetch('https://delivery.dighty.com/www/delivery/afr.php?zoneid=1131&bd='+m3_b+'&cb=INSERT_RANDOM_NUMBER_HERE')
+				.then(response => response.text())
+				.then(html => {
+				document.getElementById('delivery_container').innerHTML = html;
+				console.log("html: ", html);
+			});
+			*/
+		});
+		
+	</script>
+
+        
+
+
+
+	<div class="fab_box">
+		<button class="btn_teritary btn_gotop" type="button" title="위로 가기">
+			<img src="/assets/images/go_to_top.svg" alt="위로 가기" />
+		</button>
+	</div>
+
+<script type="text/javascript" src="//weblog.eseoul.go.kr/wlo/js/install.js" rel="preconnect"></script>
+<script>
+	document.addEventListener("DOMContentLoaded", function(){
+     //go top
+     const goTop = document.querySelector('.btn_gotop');
+     goTop.addEventListener('click', function(){
+         window.scrollTo({
+             top:0, behavior:'smooth'
+         });
+		 //#menu_skip a.first().focus();
+		 const first = document.querySelector('#menu_skip a');
+		 console.log("first: ", first);
+		 if (first) first.focus();
+     });
+ })
+
+</script>
+
+    </div>
+
+    <script type="text/javascript" src="/assets/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/assets/js/common.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function(){
+            //tab
+            tabsEvent();
+            //타이틀 동적으로 등록
+            chageLoadPageTitle("Open API 상세정보")
+        })
+
+        function user_req(){
+            if(false){
+                window.alert("이미 활용신청이 완료된 데이터입니다.");
+            }else{
+                location.href='/dataprovide/trafficdatarequestapi.do?data_id=10339&id=';
+            }
+        }
+
+         function user_login(){
+            if (window.confirm("로그인 후에 이용가능합니다.")) {
+                window.location.href="/sso/login.do";
+                //location.href='/dataprovide/trafficdatarequestapi.do?data_id=10339&id=';
+            }
+        }
+         
+         function insert_board(){
+        	 var userId = '';
+        	 
+        	 if('' === userId) {
+        		 user_login();
+        		 return;
+        	 }
+        	 
+        	 var contents = $('#contents').val();
+        	 if('' === contents) return;
+        	 
+        	 var checkbox = document.getElementById('notice_checkbox');
+        	 
+        	 var formData = new FormData();
+        	 var fileInput = $('#insert_board_file')[0] != undefined ? $('#insert_board_file')[0].files[0] : null;
+        	 
+        	 formData.append("file", fileInput); // 파일 추가        	 
+       	     formData.append("contents", contents);
+       	     formData.append("data_id", "10339");
+       	  	 formData.append("notice_at", checkbox == null ? "N" : checkbox.checked ? "Y" : "N");
+       	  	 
+        	 $.ajax({
+       			url :"/dataprovide/insert_board.do"
+       	        ,type: "POST"
+       	        //,contentType: "application/x-www-form-urlencoded"
+       	        //,data : {"data_id": "10339", "contents": contents, "notice_at": checkbox.checked ? "Y" : "N"}
+       	        ,data : formData
+       	     	,processData: false // jQuery가 데이터를 처리하지 않도록 설정
+             	,contentType: false // 기본 콘텐츠 타입을 사용하지 않도록 설정
+       	        ,dataType: 'json'  	   
+       	        ,success : function(response){
+       	        	console.log("success");
+       	        	console.log(response);
+       	        	const data = JSON.parse(response);
+       	        	console.log(data.redirectUrl);
+       	        	if (data.redirectUrl) {
+       	            	window.location.href = data.redirectUrl; // 리다이렉트
+       	         	}
+       			}
+       		    ,error: function(){
+       		    	console.log("error");
+       		    }
+       		});
+         }
+         
+      
+    </script>
+</body>
+</html>
