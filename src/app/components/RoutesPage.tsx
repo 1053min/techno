@@ -1,247 +1,174 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Navigation } from "lucide-react";
-import { useNavigate } from "react-router";
-import {
-  updateAllSignals,
-  getSignalFromCache,
-  getSignalEmoji,
-  centiSecondsToSeconds,
-} from "../services/trafficSignalService";
-import { getNearbyIntersections } from "../services/intersectionData";
+import { ArrowLeft, Zap, Sparkles, RefreshCw, Heart, TrendingUp, MapPin } from "lucide-react";
+import { useNavigate, useLocation } from "react-router";
+import { useState, useEffect } from "react";
+import { generatePresetRoute, generateDrawingRoute } from "../services/routeService";
+import { ApiStatus } from "./ApiStatus";
 
-// TMAP API TypeScript 선언
-declare global {
-  interface Window {
-    Tmapv3: any;
-  }
-}
-
-export function RouteMapPage() {
+export function RoutesPage() {
   const navigate = useNavigate();
-  const mapContainerId = "route-tmap-container";
-  const tmapRef = useRef<any>(null);
-  const [, setMarkers] = useState<any[]>([]);
-  const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
+  
+  // 홈 화면 라우터 인가 상태를 확인하여 초기 기본 활성화 탭 분기 세팅
+  const [activeTab, setActiveTab] = useState<'recommend' | 'concept' | 'drawing'>('recommend');
 
-  // 1. 현재 사용자 위치 추적 (기존 fallback 유지)
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setCurrentPosition({ lat: 37.5559, lng: 127.0436 });
-      return;
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
+
+  const handleSelectCourse = async (type: 'hanriver' | 'cherryblossom' | 'interval' | 'hanyang' | 'dog' | 'sweetpotato') => {
+    setLoading(true);
+    let routeResult = null;
+
+    if (type === 'dog' || type === 'sweetpotato') {
+      routeResult = await generateDrawingRoute(type);
+    } else {
+      routeResult = await generatePresetRoute(type);
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCurrentPosition({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      },
-      () => {
-        setCurrentPosition({ lat: 37.5559, lng: 127.0436 });
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }, []);
-
-  // 2. TMAP 지도 초기화 및 추천 러닝 경로(Polyline) 그리기
-  useEffect(() => {
-    if (!currentPosition || tmapRef.current || !window.Tmapv3) return;
-
-    // 지도 생성
-    const map = new window.Tmapv3.Map(mapContainerId, {
-      center: new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
-      zoom: 15,
-      zoomControl: false,
-    });
-    tmapRef.current = map;
-
-    // 사용자 현위치 마커
-    new window.Tmapv3.Marker({
-      position: new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
-      map: map,
-      iconHTML: `
-        <div style="
-          width: 20px;
-          height: 20px;
-          background: #6366f1;
-          border: 3px solid white;
-          border-radius: 50%;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          transform: translate(-50%, -50%);
-        "></div>
-      `,
-    });
-
-    // 💡 [MVP 드로잉 러닝 원칙] 기획안에 맞춰 가상의 러닝 추천 코스(선)를 지도에 그려줍니다.
-    // 향후 전달해주실 실제 GPX 파일 데이터 구조가 이 배열 자리에 치환되어 들어갈 예정입니다.
-    const routePaths = [
-      new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
-      new window.Tmapv3.LatLng(currentPosition.lat + 0.002, currentPosition.lng + 0.002),
-      new window.Tmapv3.LatLng(currentPosition.lat + 0.004, currentPosition.lng + 0.001),
-      new window.Tmapv3.LatLng(currentPosition.lat + 0.005, currentPosition.lng + 0.004),
-    ];
-
-    new window.Tmapv3.Polyline({
-      path: routePaths,
-      strokeColor: "#22c55e", // 러닝 코스는 스포티한 초록색 선으로 표현
-      strokeWeight: 6,
-      strokeStyle: "solid",
-      map: map,
-    });
-
-  }, [currentPosition]);
-
-  // 3. 백엔드 최적화: 10초 주기 전체 신호 대량 데이터 동기화
-  useEffect(() => {
-    updateAllSignals();
-    const interval = setInterval(updateAllSignals, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // 4. 경로 주변 신호등 마커 바인딩 및 1초 단위 실시간 오차 보정 타이머
-  const markersRef = useRef<any[]>([]);
-  const infoWindowRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (!tmapRef.current || !currentPosition) return;
-
-    if (!infoWindowRef.current) {
-      infoWindowRef.current = new window.Tmapv3.InfoWindow({
-        type: 2,
-        border: '0px solid #FF0000',
-        background: false,
-        visible: false,
-        map: tmapRef.current
-      });
+    if (routeResult) {
+      sessionStorage.setItem('selected_run_route', JSON.stringify({
+        ...routeResult,
+        name: type === 'hanriver' ? '한강 무신호 러닝 코스' : 
+              type === 'cherryblossom' ? '강남 벚꽃길 추천 코스' : 
+              type === 'interval' ? '잠실 스피드 인터벌 서킷' :
+              type === 'hanyang' ? '한양대 주변 추천 코스 🏫' :
+              type === 'dog' ? '귀여운 아기 강아지 아트 코스 🎨' : '달콤 노릇 고구마 아트 코스 🎨',
+        conceptType: type
+      }));
+      navigate("/route-map");
     }
-
-    const updateRouteSignalMarkers = () => {
-      markersRef.current.forEach((marker) => marker.setMap(null));
-      const newMarkers: any[] = [];
-
-      // 코스 주변(반경 3km 내) 교차로 정보 로드
-      const nearby = getNearbyIntersections(currentPosition.lat, currentPosition.lng, 3);
-
-      nearby.slice(0, 12).forEach(intersection => {
-        const signal = getSignalFromCache(intersection.itstId);
-        if (!signal) return;
-
-        // 서버 전송 시간 격차 정밀 오차 연산
-        const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
-
-        const directions = [
-          { key: 'ntPdsgRmdrCs', name: '북쪽', latOffset: 0.0002, lngOffset: 0, emoji: '↑' },
-          { key: 'stPdsgRmdrCs', name: '남쪽', latOffset: -0.0002, lngOffset: 0, emoji: '↓' },
-          { key: 'etPdsgRmdrCs', name: '동쪽', latOffset: 0, lngOffset: 0.0002, emoji: '→' },
-          { key: 'wtPdsgRmdrCs', name: '서쪽', latOffset: 0, lngOffset: -0.0002, emoji: '←' },
-        ];
-
-        directions.forEach(dir => {
-          const rawTimeCs = signal[dir.key as keyof typeof signal];
-          if (rawTimeCs === undefined || rawTimeCs === null) return;
-
-          const baseTime = centiSecondsToSeconds(rawTimeCs as number);
-          const adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
-          const emoji = getSignalEmoji(adjustedTime);
-
-          const latLng = new window.Tmapv3.LatLng(intersection.lat + dir.latOffset, intersection.lng + dir.lngOffset);
-
-          // 상단에 반응 잘했던 컴포넌트 마커 UI 디자인 완벽 계승
-          const marker = new window.Tmapv3.Marker({
-            position: latLng,
-            map: tmapRef.current,
-            iconHTML: `
-              <div style="
-                background: white;
-                border: 2px solid #16a34a;
-                border-radius: 8px;
-                padding: 6px 10px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                text-align: center;
-                min-width: 50px;
-                transform: translate(-50%, -100%);
-              ">
-                <div style="font-size: 13px; color: #16a34a; font-weight: bold; margin-bottom: 1px;">코스추천</div>
-                <div style="font-size: 16px; margin-bottom: 2px;">${emoji} ${adjustedTime}초</div>
-              </div>
-            `
-          });
-
-          // 마커 클릭 시 상단 레이아웃과 일치하는 오차 검증 팝업 오픈
-          marker.on("Click", () => {
-            const popupContent = `
-              <div style="padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -100%); margin-top: -20px; white-space: nowrap;">
-                <strong style="font-size: 14px; color: #16a34a;">🏃‍♂️ 추천 코스 내 교차로</strong><br>
-                <strong style="font-size: 14px;">${intersection.itstNm}</strong><br>
-                <span style="font-size: 15px;">${dir.emoji} ${dir.name} 횡단보도</span><br>
-                <div style="margin-top: 8px; font-size: 18px;">
-                  ${emoji} <strong>${adjustedTime}초</strong> 남음
-                </div>
-              </div>
-            `;
-            infoWindowRef.current.setContent(popupContent);
-            infoWindowRef.current.setPosition(latLng);
-            infoWindowRef.current.setVisible(true);
-          });
-
-          newMarkers.push(marker);
-        });
-      });
-
-      setMarkers(newMarkers);
-      markersRef.current = newMarkers;
-    };
-
-    updateRouteSignalMarkers();
-
-    const interval = setInterval(updateRouteSignalMarkers, 1000);
-    return () => clearInterval(interval);
-  }, [currentPosition]);
+    setLoading(false);
+  };
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* 상단 네비게이션 바 디자인 통일 */}
-      <div className="bg-white border-b border-border px-6 py-4 z-10">
-        <div className="max-w-md mx-auto flex items-center gap-4">
-          <button onClick={() => navigate("/")} className="p-2 -ml-2 hover:bg-secondary rounded-full">
-            <ArrowLeft className="size-6" />
-          </button>
-          <div className="flex-1">
-            <h2 className="mb-0">추천 러닝 코스 지도</h2>
-            <p className="text-sm text-muted-foreground">코스 선 위의 실시간 신호등 예측</p>
-          </div>
+    <div className="min-h-screen bg-slate-50 pb-12">
+      <div className="bg-white px-6 py-4 border-b flex items-center gap-4 sticky top-0 z-50 shadow-xs">
+        <button onClick={() => navigate("/")} className="hover:bg-slate-100 p-1 rounded-full transition-colors">
+          <ArrowLeft className="size-6 text-slate-800" />
+        </button>
+        <div>
+          <h1 className="text-lg font-bold text-slate-900">맞춤 경로 선택</h1>
+          <p className="text-xs text-slate-500">Route Setter 프리미엄 대시보드</p>
         </div>
       </div>
 
-      <div className="flex-1 relative">
-        {/* TMAP 컨테이너 레이어 */}
-        <div id={mapContainerId} className="w-full h-full" />
+      <div className="max-w-md mx-auto px-4 pt-4">
+        <ApiStatus isUsingMockData={false} />
 
-        {/* 좌측 하단 신호 요약 보드 */}
-        <div className="absolute bottom-6 left-6 bg-white rounded-2xl p-4 shadow-lg z-[1000]">
-          <div className="text-sm font-medium mb-3 text-emerald-600">🟢 러닝 코스 연동 중</div>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <span>🟢</span><span>초록불 (진입 가능)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>🔴</span><span>빨간불 (서행/대기)</span>
-            </div>
-          </div>
+        {/* 대시보드 내비게이션 세션 탭바 */}
+        <div className="grid grid-cols-3 bg-slate-200/70 p-1 rounded-xl mb-5">
+          <button 
+            onClick={() => setActiveTab('recommend')}
+            className={`py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'recommend' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600'}`}>
+            추천 코스
+          </button>
+          <button 
+            onClick={() => setActiveTab('concept')}
+            className={`py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'concept' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600'}`}>
+            컨셉 러닝
+          </button>
+          <button 
+            onClick={() => setActiveTab('drawing')}
+            className={`py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'drawing' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600'}`}>
+            드로잉 러닝
+          </button>
         </div>
 
-        {/* 현위치 리센터 버튼 */}
-        <button
-          onClick={() => {
-            if (tmapRef.current && currentPosition) {
-              tmapRef.current.setCenter(new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng));
-            }
-          }}
-          className="absolute bottom-6 right-6 bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all active:scale-95 z-[1000]"
-        >
-          <Navigation className="size-6" />
-        </button>
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20 text-indigo-600 font-medium text-sm gap-2">
+            <RefreshCw className="animate-spin size-6" />
+            <span>TMap 보행자 코스 정밀 선형 가동 중...</span>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="space-y-4">
+            {/* 탭 1: 추천 코스 항목 */}
+            {activeTab === 'recommend' && (
+              <>
+                <button onClick={() => handleSelectCourse('hanriver')} className="w-full text-left bg-white p-5 rounded-2xl shadow-xs border border-slate-100 block hover:ring-2 hover:ring-indigo-500/20 transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Zap className="size-3 fill-emerald-600" /> 신호 무정지 존
+                    </span>
+                    <span className="text-sm font-black text-slate-700">5.2 km</span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">한강 무신호 러닝 코스</h3>
+                  <p className="text-xs text-slate-500 mt-1">뚝섬한강변의 강바람을 느끼며 끊김 없는 연속 주행 속도감을 확보한 러너 추천 트랙</p>
+                </button>
+
+                <button onClick={() => handleSelectCourse('interval')} className="w-full text-left bg-white p-5 rounded-2xl shadow-xs border border-slate-100 block hover:ring-2 hover:ring-indigo-500/20 transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="bg-blue-50 text-blue-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <TrendingUp className="size-3" /> 트랙 서킷 서포트
+                    </span>
+                    <span className="text-sm font-black text-slate-700">4.5 km</span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">잠실 인터벌 트레이닝 코스</h3>
+                  <p className="text-xs text-slate-500 mt-1">잠실 종합운동장 외곽 실도로 트랙을 연계하여 보행 고저 훈련 페이스를 높이기 최적화된 라인</p>
+                </button>
+
+                {/* 🔥 요구사항 반영: 정식 통합된 '한양대 주변 러닝 코스' 카드 배치 */}
+                <button onClick={() => handleSelectCourse('hanyang')} className="w-full text-left bg-indigo-50/60 p-5 rounded-2xl shadow-xs border border-indigo-100 block hover:ring-2 hover:ring-indigo-500/40 transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="bg-indigo-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <MapPin className="size-3 fill-current" /> 현장 시연 트랙
+                    </span>
+                    <span className="text-sm font-black text-indigo-700">3.5 km</span>
+                  </div>
+                  <h3 className="text-base font-bold text-indigo-950">한양대 주변 러닝 코스</h3>
+                  <p className="text-xs text-indigo-700/80 mt-1">한양대역 기점 살곶이공원 하천변 산책로를 연계하여 신호 배치를 즉각 시연 표출하는 마스터 트랙</p>
+                </button>
+              </>
+            )}
+
+            {/* 탭 2: 컨셉 러닝 항목 */}
+            {activeTab === 'concept' && (
+              <button onClick={() => handleSelectCourse('cherryblossom')} className="w-full text-left bg-white p-5 rounded-2xl shadow-xs border border-slate-100 block hover:ring-2 hover:ring-indigo-500/20 transition-all">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="bg-pink-50 text-pink-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Heart className="size-3 fill-pink-600" /> 시즌 한정 시그니처
+                  </span>
+                  <span className="text-sm font-black text-slate-700">3.8 km</span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900">강남 벚꽃길 코스</h3>
+                <p className="text-xs text-slate-500 mt-1">화사하게 가득 피어난 연분홍 가로수 터널의 벚꽃 정취를 따라 가볍게 조깅하기 안성맞춤인 힐링 코스</p>
+              </button>
+            )}
+
+            {/* 탭 3: 드로잉 러닝 도안 선택 리스트 */}
+            {activeTab === 'drawing' && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-400 font-medium px-1">코스 형태대로 정밀 완주하면 스케치가 지도 타임라인 공간에 예쁘게 패스로 새겨집니다.</p>
+                
+                <button onClick={() => handleSelectCourse('dog')} className="w-full bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex items-center gap-4 hover:ring-2 hover:ring-indigo-500/20 transition-all text-left">
+                  <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center text-2xl shadow-inner">🐶</div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-bold text-slate-900">귀여운 아기 강아지 도안</h4>
+                      <span className="text-xs font-black text-slate-600">3.2 km</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">귀 끝 셰이프부터 4개의 앙증맞은 다리와 꼬리 각 디테일을 표현해 복귀하는 GPS 가이드 도안</p>
+                  </div>
+                </button>
+
+                <button onClick={() => handleSelectCourse('sweetpotato')} className="w-full bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex items-center gap-4 hover:ring-2 hover:ring-indigo-500/20 transition-all text-left">
+                  <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center text-2xl shadow-inner">🍠</div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-bold text-slate-900">달콤 노릇 고구마 도안</h4>
+                      <span className="text-xs font-black text-slate-600">2.7 km</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">상하 바디 굴곡은 타원형으로 부드럽게 가져가고 측면 끝자락은 뾰족하게 각을 주는 큐트 도안</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

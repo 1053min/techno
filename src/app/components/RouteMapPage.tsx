@@ -1,102 +1,207 @@
-"use client";
-
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Navigation, Play } from "lucide-react";
 import { useNavigate } from "react-router";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import {
+  updateAllSignals,
+  getSignalFromCache,
+  getSignalEmoji,
+  centiSecondsToSeconds,
+} from "../services/trafficSignalService";
+import { getNearbyIntersections } from "../services/intersectionData";
 
-import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
-import { getSignalEmoji, fetchAllTrafficSignals } from "../services/trafficSignalService";
-
-function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+declare global {
+  interface Window {
+    Tmapv3: any;
+  }
 }
 
 export function RouteMapPage() {
   const navigate = useNavigate();
-  const mapRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<Record<string, L.Marker>>({});
-  const [routeInfo, setRouteInfo] = useState<any>(null);
-  const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100 });
+  const mapContainerId = "route-tmap-container";
+  const tmapRef = useRef<any>(null);
+  const [, setMarkers] = useState<any[]>([]);
+  const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    const rawData = sessionStorage.getItem('selected_run_route');
-    if (rawData) setRouteInfo(JSON.parse(rawData));
+    if (!navigator.geolocation) {
+      setCurrentPosition({ lat: 37.5559, lng: 127.0436 });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCurrentPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
+      },
+      () => { setCurrentPosition({ lat: 37.5559, lng: 127.0436 }); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current || !routeInfo) return;
+    if (!currentPosition || tmapRef.current || !window.Tmapv3) return;
 
-    const map = L.map(mapRef.current, { zoomControl: false }).setView([routeInfo.path[0][1], routeInfo.path[0][0]], 15);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png").addTo(map);
+    const map = new window.Tmapv3.Map(mapContainerId, {
+      center: new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
+      zoom: 15,
+      zoomControl: false,
+    });
+    tmapRef.current = map;
 
-    const coords = routeInfo.path.map((c: [number, number]) => [c[1], c[0]] as L.LatLngExpression);
-    L.polyline(coords, { color: "#4f46e5", weight: 6, opacity: 0.8 }).addTo(map);
-
-    routeInfo.path.forEach((p: [number, number], i: number) => {
-      if (i % 5 === 0) L.circleMarker([p[1], p[0]], { radius: 2, color: '#4f46e5', fillOpacity: 1 }).addTo(map);
+    // 내 위치 마커
+    new window.Tmapv3.Marker({
+      position: new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
+      map: map,
+      iconHTML: `<div style="width: 20px; height: 20px; background: #6366f1; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
     });
 
-    const activeIntersections = Object.values(INTERSECTION_LOCATIONS).filter(intersection => 
-      routeInfo.path.some((p: [number, number]) => getDistanceKm(p[1], p[0], intersection.lat, intersection.lng) <= 0.03)
-    );
+    // 추천 러닝 코스 가이드 선
+    const routePaths = [
+      new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
+      new window.Tmapv3.LatLng(currentPosition.lat + 0.002, currentPosition.lng + 0.002),
+      new window.Tmapv3.LatLng(currentPosition.lat + 0.004, currentPosition.lng + 0.001),
+      new window.Tmapv3.LatLng(currentPosition.lat + 0.005, currentPosition.lng + 0.004),
+    ];
 
-    const totalLen = routeInfo.path.reduce((acc: number, _, i: number, arr: any[]) => 
-      i < arr.length - 1 ? acc + getDistanceKm(arr[i][1], arr[i][0], arr[i+1][1], arr[i+1][0]) : acc, 0);
-    setStats({ length: Number(totalLen.toFixed(2)), intersectionCount: activeIntersections.length, successRate: 100 });
+    new window.Tmapv3.Polyline({
+      path: routePaths,
+      strokeColor: "#16a34a",
+      strokeWeight: 6,
+      strokeStyle: "solid",
+      map: map,
+    });
+  }, [currentPosition]);
 
-    const updateSignals = async () => {
-      const allSignals = await fetchAllTrafficSignals();
-      activeIntersections.forEach((intersection) => {
-        const signalData = allSignals?.find(s => String(s.itstId) === String(intersection.itstId));
-        const isAvailable = !!signalData;
-        const validTime = signalData ? Math.floor((signalData.etPdsgRmdrCs || 0) / 10) : 0;
-        
-        const html = `<div class="bg-${isAvailable ? 'white' : 'gray-400'} border-2 border-${isAvailable ? 'indigo-500' : 'gray-600'} rounded-xl px-2 py-1 text-[10px] font-black shadow-xl flex items-center gap-1">
-             ${isAvailable ? `${getSignalEmoji(validTime)} ${validTime}s` : '⚪ 대기중'}
-           </div>`;
+  useEffect(() => {
+    updateAllSignals();
+    const interval = setInterval(updateAllSignals, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-        if (markersRef.current[intersection.itstId]) {
-          markersRef.current[intersection.itstId].setIcon(L.divIcon({ html, iconSize: [65, 30], iconAnchor: [32, 15] }));
-        } else {
-          markersRef.current[intersection.itstId] = L.marker([intersection.lat, intersection.lng], { icon: L.divIcon({ html, iconSize: [65, 30], iconAnchor: [32, 15] }) }).addTo(map);
-        }
+  const markersRef = useRef<any[]>([]);
+  const infoWindowRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!tmapRef.current || !currentPosition) return;
+
+    if (!infoWindowRef.current) {
+      infoWindowRef.current = new window.Tmapv3.InfoWindow({
+        type: 2,
+        border: '0px solid #FF0000',
+        background: false,
+        visible: false,
+        map: tmapRef.current
       });
+    }
+
+    const updateRouteSignalMarkers = () => {
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      const newMarkers: any[] = [];
+      const nearby = getNearbyIntersections(currentPosition.lat, currentPosition.lng, 3);
+
+      nearby.slice(0, 12).forEach(intersection => {
+        const signal = getSignalFromCache(intersection.itstId);
+        if (!signal) return;
+
+        const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
+        const directions = [
+          { key: 'ntPdsgRmdrCs', name: '북쪽', latOffset: 0.0002, lngOffset: 0, emoji: '↑' },
+          { key: 'stPdsgRmdrCs', name: '남쪽', latOffset: -0.0002, lngOffset: 0, emoji: '↓' },
+          { key: 'etPdsgRmdrCs', name: '동쪽', latOffset: 0, lngOffset: 0.0002, emoji: '→' },
+          { key: 'wtPdsgRmdrCs', name: '서쪽', latOffset: 0, lngOffset: -0.0002, emoji: '←' },
+        ];
+
+        directions.forEach(dir => {
+          const rawTimeCs = signal[dir.key as keyof typeof signal];
+          if (rawTimeCs === undefined || rawTimeCs === null) return;
+
+          const baseTime = centiSecondsToSeconds(rawTimeCs as number);
+          const adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
+          const emoji = getSignalEmoji(adjustedTime);
+          const latLng = new window.Tmapv3.LatLng(intersection.lat + dir.latOffset, intersection.lng + dir.lngOffset);
+
+          const marker = new window.Tmapv3.Marker({
+            position: latLng,
+            map: tmapRef.current,
+            iconHTML: `
+              <div style="background: white; border: 2px solid #16a34a; border-radius: 8px; padding: 6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); text-align: center; min-width: 50px; transform: translate(-50%, -100%);">
+                <div style="font-size: 11px; color: #16a34a; font-weight: bold; margin-bottom: 1px;">추천코스</div>
+                <div style="font-size: 15px; margin-bottom: 2px;">${emoji} ${adjustedTime}초</div>
+              </div>
+            `
+          });
+
+          marker.on("Click", () => {
+            const popupContent = `
+              <div style="padding: 12px; background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -100%); margin-top: -20px; white-space: nowrap;">
+                <strong style="font-size: 14px; color: #16a34a;">🏃‍♂️ 코스 내 교차로</strong><br>
+                <strong style="font-size: 14px;">${intersection.itstNm}</strong><br>
+                <span style="font-size: 15px;">${dir.emoji} ${dir.name} 횡단보도</span><br>
+                <div style="margin-top: 8px; font-size: 18px;">${emoji} <strong>${adjustedTime}초</strong> 남음</div>
+              </div>
+            `;
+            infoWindowRef.current.setContent(popupContent);
+            infoWindowRef.current.setPosition(latLng);
+            infoWindowRef.current.setVisible(true);
+          });
+          newMarkers.push(marker);
+        });
+      });
+      setMarkers(newMarkers);
+      markersRef.current = newMarkers;
     };
 
-    const interval = setInterval(updateSignals, 10000);
-    updateSignals();
-    return () => { clearInterval(interval); map.remove(); };
-  }, [routeInfo]);
+    updateRouteSignalMarkers();
+    const interval = setInterval(updateRouteSignalMarkers, 1000);
+    return () => clearInterval(interval);
+  }, [currentPosition]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-50 relative">
-      <div className="p-4 bg-white border-b flex items-center gap-3 z-10">
-        <button onClick={() => navigate(-1)}><ArrowLeft className="size-5" /></button>
-        <h2 className="font-black">{routeInfo?.name}</h2>
-      </div>
-      <div className="flex-1 w-full relative z-0">
-        <div ref={mapRef} className="w-full h-full" />
+    <div className="h-screen flex flex-col">
+      <div className="bg-white border-b border-border px-6 py-4 z-10">
+        <div className="max-w-md mx-auto flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-secondary rounded-full">
+            <ArrowLeft className="size-6" />
+          </button>
+          <div className="flex-1">
+            <h2 className="mb-0">추천 러닝 코스 지도</h2>
+            <p className="text-sm text-muted-foreground">코스 선 위의 실시간 신호등 예측</p>
+          </div>
+        </div>
       </div>
 
-      {/* 📊 하단 패널: 통계 및 러닝 시작 버튼 */}
-      <div className="absolute bottom-6 left-4 right-4 z-[1000] flex flex-col gap-3">
-        <div className="bg-white/90 backdrop-blur-lg p-4 rounded-2xl shadow-xl border border-white/20 flex justify-between">
-          <div className="text-center"><p className="text-[10px] text-slate-500">길이</p><p className="font-black">{stats.length}km</p></div>
-          <div className="text-center"><p className="text-[10px] text-slate-500">교차로</p><p className="font-black">{stats.intersectionCount}곳</p></div>
-          <div className="text-center"><p className="text-[10px] text-slate-500">무정지율</p><p className="font-black text-indigo-600">{stats.successRate}%</p></div>
+      <div className="flex-1 relative">
+        <div id={mapContainerId} className="w-full h-full" />
+
+        {/* 좌측 하단 보드 */}
+        <div className="absolute bottom-28 left-6 bg-white rounded-2xl p-4 shadow-lg z-[1000]">
+          <div className="text-sm font-medium mb-2 text-emerald-600">🟢 러닝 코스 연동 중</div>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-center gap-2"><span>🟢</span><span>초록불 (진입 가능)</span></div>
+            <div className="flex items-center gap-2"><span>🔴</span><span>빨간불 (서행/대기)</span></div>
+          </div>
         </div>
+
+        {/* 현위치 버튼 */}
         <button
-          onClick={() => navigate("/tracking", { state: { routeInfo } })}
-          className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-indigo-700 transition-all active:scale-95"
+          onClick={() => {
+            if (tmapRef.current && currentPosition) {
+              tmapRef.current.setCenter(new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng));
+            }
+          }}
+          className="absolute bottom-28 right-6 bg-white border border-border rounded-full p-4 shadow-md z-[1000]"
         >
-          러닝 시작하기
+          <Navigation className="size-6 text-primary" />
         </button>
+
+        {/* 🚀 화면 최하단 플로팅 '러닝 시작' 버튼 */}
+        <div className="absolute bottom-8 left-0 right-0 flex justify-center px-6 z-[1000]">
+          <button
+            onClick={() => navigate("/tracking")} 
+            className="w-full max-w-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2.5"
+          >
+            <Play className="size-5 fill-white" />
+            이 코스로 러닝 시작
+          </button>
+        </div>
       </div>
     </div>
   );
