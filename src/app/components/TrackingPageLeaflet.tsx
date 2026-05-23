@@ -6,7 +6,7 @@ import { Pause, Play, Square, Maximize2, Minimize2 } from "lucide-react";
 
 import { useNavigate,useLocation } from "react-router";
 
-import { SEOUL_INTERSECTIONS, getSignalEmoji, getPedestrianSignalTime, getVehicleSignalTime, getSignalFromCache } from "../services/trafficSignalService";
+import { SEOUL_INTERSECTIONS, getSignalEmoji, getSignalFromCache } from "../services/trafficSignalService";
 
 import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
 
