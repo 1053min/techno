@@ -13,11 +13,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 1. API 주소 및 쿼리 파라미터 강제 고정
     // 서울시 API는 보통 apikey를 쿼리 맨 앞에 두는 것을 선호합니다.
-    let apiUrl = `https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingFusionInformation/1.0?apikey=${SEOUL_API_KEY}`;
-    
-    // 2. 추가 파라미터 직접 연결
-    apiUrl += `&type=json&pageNo=1&numOfRows=100`;
-    
+    const baseUrl = 'https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingInformation/1.0';
+
+  // 2. 파라미터명 확인 (공공데이터 포털은 보통 apiKey 또는 serviceKey를 사용합니다)
+// 일단 serviceKey로 시도해 보시고, 안 되면 apikey로 변경하세요.
+    let apiUrl = `${baseUrl}?serviceKey=${SEOUL_API_KEY}&type=json&pageNo=1&numOfRows=100`;
+
     if (itsId && typeof itsId === 'string') {
       apiUrl += `&itstId=${itsId}`;
     }
