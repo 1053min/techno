@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Navigation, Play } from "lucide-react";
+import { ArrowLeft, Navigation, Play, MapPin } from "lucide-react";
 import { useNavigate } from "react-router";
 import {
   updateAllSignals,
@@ -15,72 +15,126 @@ declare global {
   }
 }
 
+// 💡 [MVP 기획 원칙] 고유 중심점 및 다각형 인도 경로 데이터 정의
+const COURSE_DATA = {
+  hanyang: {
+    name: "한양대 코스",
+    center: { lat: 37.5559, lng: 127.0436 },
+    path: [
+      { lat: 37.5559, lng: 127.0436 },
+      { lat: 37.5575, lng: 127.0460 },
+      { lat: 37.5545, lng: 127.0485 },
+      { lat: 37.5520, lng: 127.0445 },
+      { lat: 37.5535, lng: 127.0405 },
+      { lat: 37.5559, lng: 127.0436 }, // 닫힌 다각형 구조
+    ]
+  },
+  hanriver: {
+    name: "한강 코스",
+    center: { lat: 37.5284, lng: 127.0682 },
+    path: [
+      { lat: 37.5284, lng: 127.0682 },
+      { lat: 37.5310, lng: 127.0640 },
+      { lat: 37.5345, lng: 127.0675 },
+      { lat: 37.5315, lng: 127.0725 },
+      { lat: 37.5284, lng: 127.0682 },
+    ]
+  },
+  gangnam: {
+    name: "강남 코스",
+    center: { lat: 37.4979, lng: 127.0276 },
+    path: [
+      { lat: 37.4979, lng: 127.0276 },
+      { lat: 37.5005, lng: 127.0315 },
+      { lat: 37.4985, lng: 127.0350 },
+      { lat: 37.4950, lng: 127.0310 },
+      { lat: 37.4979, lng: 127.0276 },
+    ]
+  }
+};
+
+type CourseType = keyof typeof COURSE_DATA;
+
 export function RouteMapPage() {
   const navigate = useNavigate();
   const mapContainerId = "route-tmap-container";
+  
+  // 상태 관리: 현재 선택된 코스 (기본값: 한양대 코스)
+  const [selectedCourse, setSelectedCourse] = useState<CourseType>("hanyang");
+  
   const tmapRef = useRef<any>(null);
+  const polylineRef = useRef<any>(null); // 변경되는 경로선을 관리하기 위한 Ref
+  const userMarkerRef = useRef<any>(null); // 내 위치 마커 Ref
   const [, setMarkers] = useState<any[]>([]);
-  const [currentPosition, setCurrentPosition] = useState<{ lat: number; lng: number } | null>(null);
 
+  // 1. TMAP 지도 최초 1회 초기화
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setCurrentPosition({ lat: 37.5559, lng: 127.0436 });
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCurrentPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
-      },
-      () => { setCurrentPosition({ lat: 37.5559, lng: 127.0436 }); },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }, []);
+    if (tmapRef.current || !window.Tmapv3) return;
 
-  useEffect(() => {
-    if (!currentPosition || tmapRef.current || !window.Tmapv3) return;
-
+    const currentCourse = COURSE_DATA[selectedCourse];
     const map = new window.Tmapv3.Map(mapContainerId, {
-      center: new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
+      center: new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng),
       zoom: 15,
       zoomControl: false,
     });
     tmapRef.current = map;
 
-    // 내 위치 마커
-    new window.Tmapv3.Marker({
-      position: new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
+    // 초기 사용자 마커 생성
+    userMarkerRef.current = new window.Tmapv3.Marker({
+      position: new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng),
       map: map,
-      iconHTML: `<div style="width: 20px; height: 20px; background: #6366f1; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
+      iconHTML: `
+        <div style="width: 20px; height: 20px; background: #6366f1; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>
+      `,
     });
+  }, []);
 
-    // 추천 러닝 코스 가이드 선
-    const routePaths = [
-      new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng),
-      new window.Tmapv3.LatLng(currentPosition.lat + 0.002, currentPosition.lng + 0.002),
-      new window.Tmapv3.LatLng(currentPosition.lat + 0.004, currentPosition.lng + 0.001),
-      new window.Tmapv3.LatLng(currentPosition.lat + 0.005, currentPosition.lng + 0.004),
-    ];
+  // 2. 💡 코스(탭) 변경 시 지도 중심 이동 및 다각형 인도 경로선 변경 로직 부활
+  useEffect(() => {
+    if (!tmapRef.current || !window.Tmapv3) return;
 
-    new window.Tmapv3.Polyline({
-      path: routePaths,
-      strokeColor: "#16a34a",
+    const currentCourse = COURSE_DATA[selectedCourse];
+
+    // 지도의 중심점을 선택된 코스의 중심점으로 부드럽게 이동
+    tmapRef.current.setCenter(new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng));
+
+    // 기존 코스의 사용자 마커 위치 갱신
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setPosition(new window.Tmapv3.LatLng(currentCourse.center.lat, currentCourse.center.lng));
+    }
+
+    // 기존에 그려져 있던 가이드 선(Polyline)이 있다면 삭제 처리하여 찌꺼기 방지
+    if (polylineRef.current) {
+      polylineRef.current.setMap(null);
+    }
+
+    // 신규 선택된 코스의 좌표 세팅 및 그리기
+    const tmapPaths = currentCourse.path.map(
+      (coord) => new window.Tmapv3.LatLng(coord.lat, coord.lng)
+    );
+
+    polylineRef.current = new window.Tmapv3.Polyline({
+      path: tmapPaths,
+      strokeColor: "#16a34a", // 러닝 앱 스포티 그린 컬러 적용
       strokeWeight: 6,
       strokeStyle: "solid",
-      map: map,
+      map: tmapRef.current,
     });
-  }, [currentPosition]);
+  }, [selectedCourse]);
 
+  // 3. 백엔드 데이터 최적화: 10초 주기 전체 신호 대량 동기화
   useEffect(() => {
     updateAllSignals();
     const interval = setInterval(updateAllSignals, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  // 4. 경로 주변 신호등 마커 바인딩 및 1초 단위 오차 보정 타이머
   const markersRef = useRef<any[]>([]);
   const infoWindowRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!tmapRef.current || !currentPosition) return;
+    if (!tmapRef.current) return;
 
     if (!infoWindowRef.current) {
       infoWindowRef.current = new window.Tmapv3.InfoWindow({
@@ -95,7 +149,10 @@ export function RouteMapPage() {
     const updateRouteSignalMarkers = () => {
       markersRef.current.forEach((marker) => marker.setMap(null));
       const newMarkers: any[] = [];
-      const nearby = getNearbyIntersections(currentPosition.lat, currentPosition.lng, 3);
+      
+      // 💡 현재 선택된 코스의 중심점을 기준으로 주변 3km 신호 연동
+      const currentCenter = COURSE_DATA[selectedCourse].center;
+      const nearby = getNearbyIntersections(currentCenter.lat, currentCenter.lng, 3);
 
       nearby.slice(0, 12).forEach(intersection => {
         const signal = getSignalFromCache(intersection.itstId);
@@ -152,57 +209,11 @@ export function RouteMapPage() {
     updateRouteSignalMarkers();
     const interval = setInterval(updateRouteSignalMarkers, 1000);
     return () => clearInterval(interval);
-  }, [currentPosition]);
+  }, [selectedCourse]); // 코스가 변경될 때마다 신호등 마커도 해당 위치 주위로 즉시 재생성
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="bg-white border-b border-border px-6 py-4 z-10">
-        <div className="max-w-md mx-auto flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-secondary rounded-full">
-            <ArrowLeft className="size-6" />
-          </button>
-          <div className="flex-1">
-            <h2 className="mb-0">추천 러닝 코스 지도</h2>
-            <p className="text-sm text-muted-foreground">코스 선 위의 실시간 신호등 예측</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 relative">
-        <div id={mapContainerId} className="w-full h-full" />
-
-        {/* 좌측 하단 보드 */}
-        <div className="absolute bottom-28 left-6 bg-white rounded-2xl p-4 shadow-lg z-[1000]">
-          <div className="text-sm font-medium mb-2 text-emerald-600">🟢 러닝 코스 연동 중</div>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center gap-2"><span>🟢</span><span>초록불 (진입 가능)</span></div>
-            <div className="flex items-center gap-2"><span>🔴</span><span>빨간불 (서행/대기)</span></div>
-          </div>
-        </div>
-
-        {/* 현위치 버튼 */}
-        <button
-          onClick={() => {
-            if (tmapRef.current && currentPosition) {
-              tmapRef.current.setCenter(new window.Tmapv3.LatLng(currentPosition.lat, currentPosition.lng));
-            }
-          }}
-          className="absolute bottom-28 right-6 bg-white border border-border rounded-full p-4 shadow-md z-[1000]"
-        >
-          <Navigation className="size-6 text-primary" />
-        </button>
-
-        {/* 🚀 화면 최하단 플로팅 '러닝 시작' 버튼 */}
-        <div className="absolute bottom-8 left-0 right-0 flex justify-center px-6 z-[1000]">
-          <button
-            onClick={() => navigate("/tracking")} 
-            className="w-full max-w-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2.5"
-          >
-            <Play className="size-5 fill-white" />
-            이 코스로 러닝 시작
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+      <div className="bg-white border-b border-border px-6 py-4 z-10 shadow-sm">
+        <div className="max-w-md mx-auto flex flex-col gap-3">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-secondary rounded-
