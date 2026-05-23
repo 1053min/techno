@@ -4,7 +4,7 @@ import { RoutesPage } from "./components/RoutesPage";
 import { TrackingPageLeaflet } from "./components/TrackingPageLeaflet";
 import { CompletePage } from "./components/CompletePage";
 import { HistoryPage } from "./components/HistoryPage";
-import { MapPageLeaflet } from "./components/MapPageLeaflet";
+import { MapPageTmap } from "./components/MapPageLeaflet";
 import { RouteMapPage } from "./components/RouteMapPage";
 
 export default function App() {
@@ -17,7 +17,7 @@ export default function App() {
         <Route path="/tracking" element={<TrackingPageLeaflet />} />
         <Route path="/complete" element={<CompletePage />} />
         <Route path="/history" element={<HistoryPage />} />
-        <Route path="/map" element={<MapPageLeaflet />} />
+        <Route path="/map" element={<MapPageTmap />} />
       </Routes>
     </BrowserRouter>
   );
