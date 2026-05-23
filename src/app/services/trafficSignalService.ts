@@ -1,4 +1,4 @@
-const VERCEL_SIGN_API = 'https://techno-vert.vercel.app/api/sign';
+const VERCEL_SIGN_API = '/api/sign';
 
 export interface SignalData {
   itstId: string;

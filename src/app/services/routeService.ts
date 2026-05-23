@@ -1,4 +1,4 @@
-const VERCEL_TMAP_API = 'https://techno-vert.vercel.app/api/tmap';
+const VERCEL_TMAP_API = '/api/tmap';
 
 export const COORD_PRESETS = {
   HANYANG: { lat: 37.5555, lng: 127.0436 },

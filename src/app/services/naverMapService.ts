@@ -1,7 +1,7 @@
 // 네이버 지도 API 서비스 - Vercel 백엔드 사용
 
 // Vercel 배포 URL
-const VERCEL_MAP_API = 'https://techno-vert.vercel.app/api/map';
+const VERCEL_MAP_API = '/api/map';
 
 /**
  * 주소 → 좌표 변환 (Geocoding)
