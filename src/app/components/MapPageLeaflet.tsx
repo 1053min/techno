@@ -92,16 +92,17 @@ export function MapPageLeaflet() {
   }, []);
 
   // 주변 교차로 횡단보도 마커 표시
+  const markersRef = useRef<L.Marker[]>([]);
   useEffect(() => {
     if (!leafletMapRef.current || !currentPosition) return;
 
     const updateSignalMarkers = () => {
-      // 기존 마커 제거
-      markers.forEach((marker) => marker.remove());
+      markersRef.current.forEach((marker) => marker.remove());
+
+      const newMarkers: L.Marker[] = [];
 
       // 주변 교차로 찾기
       const nearby = getNearbyIntersections(currentPosition.lat, currentPosition.lng, 3);
-      const newMarkers: L.Marker[] = [];
 
       nearby.slice(0, 15).forEach(intersection => {
         const signal = getSignalFromCache(intersection.itstId);
@@ -167,6 +168,7 @@ export function MapPageLeaflet() {
       });
 
       setMarkers(newMarkers);
+      markersRef.current = newMarkers;
     };
 
     updateSignalMarkers();
