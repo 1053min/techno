@@ -56,6 +56,26 @@ export function HomePage() {
             <div className="text-xs text-muted-foreground">성장 그래프</div>
           </button>
 
+          {/* 🔥 뱃지 버튼 추가 */}
+          <button
+            onClick={() => navigate("/badges")}
+            className="bg-white rounded-2xl p-6 shadow-xs hover:shadow-md transition-shadow text-left border border-slate-100"
+          >
+            <Award className="size-8 text-amber-500 mb-3" />
+            <div className="font-bold text-slate-800 mb-1">내 뱃지</div>
+            <div className="text-xs text-muted-foreground">달성 보상 확인</div>
+          </button>
+
+          {/* 🔥 월간 프로젝트 버튼 추가 */}
+          <button
+            onClick={() => navigate("/monthly-project")}
+            className="bg-white rounded-2xl p-6 shadow-xs hover:shadow-md transition-shadow text-left border border-slate-100"
+          >
+            <Calendar className="size-8 text-emerald-500 mb-3" />
+            <div className="font-bold text-slate-800 mb-1">월간 프로젝트</div>
+            <div className="text-xs text-muted-foreground">스트링 아트 챌린지</div>
+          </button>
+
           <button className="bg-white rounded-2xl p-6 shadow-xs hover:shadow-md transition-shadow text-left border border-slate-100">
             <Heart className="size-8 text-pink-500 mb-3" />
             <div className="font-bold text-slate-800 mb-1">감정 일기</div>
