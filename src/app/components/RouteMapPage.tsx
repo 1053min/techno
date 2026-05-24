@@ -58,8 +58,8 @@ export function RouteMapPage() {
     if (!routeInfo || tmapRef.current || !window.Tmapv3) return;
 
     // routeInfo.path는 [lng, lat] 구조이므로 TMAP용 [lat, lng]로 변환
-    const startLat = routeInfo.path[0][1];
-    const startLng = routeInfo.path[0][0];
+    const startLat = Number(routeInfo.path[0][1]);
+    const startLng = Number(routeInfo.path[0][0]);
 
     const map = new window.Tmapv3.Map(mapContainerId, {
       center: new window.Tmapv3.LatLng(startLat, startLng),
@@ -68,24 +68,42 @@ export function RouteMapPage() {
     });
     tmapRef.current = map;
 
-    // TMAP용 경로 좌표 배열 생성
-    const tmapPaths = routeInfo.path.map((c: [number, number]) => new window.Tmapv3.LatLng(c[1], c[0]));
+    // TMAP용 경로 좌표 배열 생성 (유효성 검사 및 연속된 중복 좌표 필터링)
+    const tmapPaths: any[] = [];
+    let prevLat: number | null = null;
+    let prevLng: number | null = null;
+    
+    routeInfo.path.forEach((c: any) => {
+      const lng = Number(c[0]);
+      const lat = Number(c[1]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        // 완전히 동일한 좌표가 연속되면 TMAP Polyline 렌더링이 실패할 수 있으므로 방어
+        if (prevLat !== lat || prevLng !== lng) {
+          tmapPaths.push(new window.Tmapv3.LatLng(lat, lng));
+          prevLat = lat;
+          prevLng = lng;
+        }
+      }
+    });
 
     // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
-    new window.Tmapv3.Polyline({
+    const routePolyline = new window.Tmapv3.Polyline({
       path: tmapPaths,
-      strokeColor: "#4f46e5", // 인디고 컬러
+      strokeColor: "#dd7e24", // 인디고 컬러 (HEX 대문자 권장)
       strokeWeight: 6,
+      strokeOpacity: 1, // 누락 방지를 위해 투명도 명시
       strokeStyle: "solid",
-      map: map,
     });
+    
+    // TMAP 버그 방지: 생성 시 map 객체를 넣지 않고 setMap으로 명시적 부착
+    routePolyline.setMap(map);
 
     // 시작점 마커
-    new window.Tmapv3.Marker({
+    const startMarker = new window.Tmapv3.Marker({
       position: new window.Tmapv3.LatLng(startLat, startLng),
-      map: map,
-      iconHTML: `<div style="width: 18px; height: 18px; background: #4f46e5; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
+      iconHTML: `<div style="width: 18px; height: 18px; background: #421c01; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
     });
+    startMarker.setMap(map);
 
     // 💡 경로 주변(30m 반경) 교차로 필터링 로직 복구
     const filteredIntersections = Object.values(INTERSECTION_LOCATIONS).filter(intersection => 
@@ -104,6 +122,14 @@ export function RouteMapPage() {
       successRate: 100 // 추후 백엔드 연동 시 확률 계산
     });
 
+    // React Strict Mode 마운트/언마운트 사이클 대응 (컨테이너 클린업)
+    return () => {
+      if (tmapRef.current) {
+        const mapDiv = document.getElementById(mapContainerId);
+        if (mapDiv) mapDiv.innerHTML = "";
+        tmapRef.current = null;
+      }
+    };
   }, [routeInfo]);
 
   // 3. 백엔드 최적화: 10초 주기 전체 신호 대량 동기화
@@ -118,6 +144,7 @@ export function RouteMapPage() {
     if (!tmapRef.current || activeIntersections.length === 0) return;
 
     const updateSignals = () => {
+      if (!tmapRef.current) return;
       // 기존 마커 초기화
       markersRef.current.forEach((marker) => marker.setMap(null));
       const newMarkers: any[] = [];
