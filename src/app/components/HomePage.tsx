@@ -1,4 +1,4 @@
-import { Play, TrendingUp, Map, Heart } from "lucide-react";
+import { Play, TrendingUp, Map, Heart, Award, Calendar } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export function HomePage() {
@@ -8,9 +8,16 @@ export function HomePage() {
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white px-6 py-8">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="mb-2 text-2xl font-black text-slate-900">오늘의 러닝</h1>
-          <p className="text-muted-foreground text-sm">멈추지 않는 당신의 리듬</p>
+        <div className="flex justify-between items-start mb-12">
+          <div>
+            <h1 className="mb-2 text-2xl font-black text-slate-900">오늘의 러닝</h1>
+            <p className="text-muted-foreground text-sm">멈추지 않는 당신의 리듬</p>
+          </div>
+          {/* ⚡ 크레딧 시스템 Mock-up */}
+          <div className="flex items-center gap-1.5 bg-white border border-indigo-100 px-3 py-1.5 rounded-full shadow-sm">
+            <span className="text-base">⚡</span>
+            <span className="font-bold text-indigo-700 text-sm">2,400 C</span>
+          </div>
         </div>
 
         {/* Main Action */}
