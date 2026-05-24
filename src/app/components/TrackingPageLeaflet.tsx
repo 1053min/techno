@@ -83,9 +83,19 @@ export function TrackingPageLeaflet() {
 
     if (routeInfo?.path) {
 
-      const tmapPaths = routeInfo.path.map((c: [number, number]) => new window.Tmapv3.LatLng(c[1], c[0]));
+      const tmapPaths: any[] = [];
+      let prevLat: number | null = null;
+      let prevLng: number | null = null;
+      routeInfo.path.forEach((c: [number, number]) => {
+        // 좌표 밀집도 분산 (약 20m 간격)으로 화살표 렌더링 최적화
+        if (!prevLat || !prevLng || Math.abs(prevLat - c[1]) + Math.abs(prevLng - c[0]) > 0.0002) {
+            tmapPaths.push(new window.Tmapv3.LatLng(c[1], c[0]));
+            prevLat = c[1];
+            prevLng = c[0];
+        }
+      });
       
-      // TMAP WebGL 타이밍 버그 방지 (0.5초 지연 렌더링)
+      // TMAP WebGL 로딩 보장 (1.2초 지연 렌더링)
       setTimeout(() => {
         if (!tmapRef.current) return;
         new window.Tmapv3.Polyline({
@@ -97,7 +107,7 @@ export function TrackingPageLeaflet() {
           direction: true, // 💡 가이드 경로 진행 방향 화살표
           map: tmapRef.current,
         });
-      }, 500);
+      }, 1200);
 
     }
 

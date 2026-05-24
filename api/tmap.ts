@@ -11,8 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 💡 실패 좌표를 인도로 보정하기 위한 주변 장소(POI) 검색 API 분기
     if (body.action === 'poi') {
       const { centerLon, centerLat } = body;
-      // 주변 반경 내 가장 가까운 상업시설(편의점 등 인도와 맞닿은 곳) 1개를 찾아 좌표 확보
-      const poiUrl = `https://apis.openapi.sk.com/tmap/pois/search/around?version=1&format=json&categories=${encodeURIComponent('편의점')}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&centerLon=${centerLon}&centerLat=${centerLat}&radius=1&count=1`;
+      // 건물 안으로 경로가 튀는 현상(Spike)을 막기 위해 무조건 대로변에 위치한 버스정류장/지하철역을 타겟팅
+      const poiUrl = `https://apis.openapi.sk.com/tmap/pois/search/around?version=1&format=json&categories=${encodeURIComponent('지하철역;버스정류장')}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&centerLon=${centerLon}&centerLat=${centerLat}&radius=1&count=1`;
       
       const poiResponse = await fetch(poiUrl, {
         method: 'GET',

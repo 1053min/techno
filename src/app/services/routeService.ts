@@ -26,6 +26,24 @@ async function getSafePoiCoordinate(lat: number, lng: number) {
   return { lat, lng }; // 실패 시 원래 좌표 그대로 반환
 }
 
+// 💡 삐죽 튀어나온 경로(Spike)나 불필요한 백트래킹을 제거하는 후처리 필터
+function removeSpikes(path: Array<[number, number]>) {
+  const smoothed: Array<[number, number]> = [];
+  for (let i = 0; i < path.length; i++) {
+    if (smoothed.length > 0 && i < path.length - 1) {
+      const prev = smoothed[smoothed.length - 1];
+      const next = path[i + 1];
+      // 이전 점과 다음 점이 매우 가까운데 현재 점만 멀리 튀어나간 경우 (유클리디안 거리 약 30m 이내)
+      const dist = Math.sqrt(Math.pow(prev[0] - next[0], 2) + Math.pow(prev[1] - next[1], 2));
+      if (dist < 0.0003) {
+        continue; // 튀어나온 현재 점을 스킵하여 매끄럽게 연결
+      }
+    }
+    smoothed.push(path[i]);
+  }
+  return smoothed;
+}
+
 // 2. 자연스러운 다각형 순환 루프(Loop) 경로 생성 (다중 경유지 passList 활용)
 export async function generateLoopRoute(start: { lat: number; lng: number }, distanceKm: number = 3) {
   // 다각형(자연스러운 원형/마름모) 루프를 만들기 위한 경유지 반경 설정
@@ -71,7 +89,7 @@ export async function generateLoopRoute(start: { lat: number; lng: number }, dis
       .filter((f: any) => f.geometry.type === 'LineString')
       .forEach((f: any) => fullPath.push(...f.geometry.coordinates));
     
-    return { path: fullPath, name: '추천 다각형 루프 코스' };
+    return { path: removeSpikes(fullPath), name: '추천 다각형 루프 코스' };
   } catch (error) {
     console.warn("1차 경로 탐색 실패! 유효하지 않은 좌표를 근처 가게(인도)로 보정하여 재시도합니다.", error);
     
@@ -106,7 +124,7 @@ export async function generateLoopRoute(start: { lat: number; lng: number }, dis
       const retryFullPath: Array<[number, number]> = [];
       retryData.features.filter((f: any) => f.geometry.type === 'LineString').forEach((f: any) => retryFullPath.push(...f.geometry.coordinates));
       
-      return { path: retryFullPath, name: '추천 코스 (경로 보정됨)' };
+      return { path: removeSpikes(retryFullPath), name: '추천 코스 (경로 보정됨)' };
     } catch (retryError) {
       return { 
         path: [[start.lng, start.lat], [p1.lng, p1.lat], [p2.lng, p2.lat], [p3.lng, p3.lat], [start.lng, start.lat]], 

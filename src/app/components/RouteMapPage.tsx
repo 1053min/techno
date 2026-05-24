@@ -77,8 +77,8 @@ export function RouteMapPage() {
       const lng = Number(c[0]);
       const lat = Number(c[1]);
       if (!isNaN(lat) && !isNaN(lng)) {
-        // 완전히 동일한 좌표가 연속되면 TMAP Polyline 렌더링이 실패할 수 있으므로 방어
-        if (prevLat !== lat || prevLng !== lng) {
+        // 💡 화살표 개수를 줄이기 위해 아주 가까운 간격(약 15m 이내)의 좌표는 필터링하여 선을 부드럽게 유지
+        if (!prevLat || !prevLng || getDistanceKm(prevLat, prevLng, lat, lng) > 0.015) {
           tmapPaths.push(new window.Tmapv3.LatLng(lat, lng));
           prevLat = lat;
           prevLng = lng;
@@ -90,8 +90,7 @@ export function RouteMapPage() {
     console.log(`[TMAP 렌더링] 준비 완료: 총 ${tmapPaths.length}개의 좌표로 선을 그립니다.`);
 
     // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
-    // TMAP WebGL 엔진이 지도를 화면에 완전히 준비하기 전에 Polyline을 추가하면 
-    // 선이 증발하는 타이밍 버그가 있습니다. 이를 막기 위해 0.5초 딜레이를 줍니다.
+    // 🌸 강남 벚꽃길 코스처럼 타일 로딩이 무거운 경우 No style loaded 에러를 막기 위해 1.2초 대기
     setTimeout(() => {
       if (!tmapRef.current) return; // 그 사이 사용자가 뒤로가기를 눌렀다면 취소
       new window.Tmapv3.Polyline({
@@ -103,7 +102,7 @@ export function RouteMapPage() {
         direction: true, // 💡 러닝 진행 방향 화살표 추가
         map: tmapRef.current, 
       });
-    }, 500);
+    }, 1200);
 
     // 시작점 마커
     const startMarker = new window.Tmapv3.Marker({
@@ -164,13 +163,21 @@ export function RouteMapPage() {
         if (isAvailable) {
           // 오차 보정 로직 적용
           const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
-          // 대표 방향(동서남북 중 데이터가 있는 첫 번째 것) 추출 로직 (MVP용)
-          const directions = ['ntPdsgRmdrCs', 'stPdsgRmdrCs', 'etPdsgRmdrCs', 'wtPdsgRmdrCs'];
+          
+          // 💡 횡단보도와 신호 연결: 방향 데이터를 통해 팝업창을 실제 횡단보도 위로 미세 이동시킵니다.
+          const directions = [
+            { key: 'ntPdsgRmdrCs', emoji: '↑', latOffset: 0.00015, lngOffset: 0 },
+            { key: 'stPdsgRmdrCs', emoji: '↓', latOffset: -0.00015, lngOffset: 0 },
+            { key: 'etPdsgRmdrCs', emoji: '→', latOffset: 0, lngOffset: 0.00015 },
+            { key: 'wtPdsgRmdrCs', emoji: '←', latOffset: 0, lngOffset: -0.00015 }
+          ];
+          let activeDir = directions[0];
           let validTimeCs = 0;
           
           for (const dir of directions) {
-            if (signal[dir] !== undefined && signal[dir] !== null) {
-              validTimeCs = signal[dir];
+            if (signal[dir.key] !== undefined && signal[dir.key] !== null) {
+              validTimeCs = signal[dir.key];
+              activeDir = dir;
               break;
             }
           }
@@ -181,7 +188,7 @@ export function RouteMapPage() {
 
           htmlContent = `
             <div style="background: white; border: 2px solid #4f46e5; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 12px; transform: translate(-50%, -100%); white-space: nowrap;">
-              <span>${emoji}</span>
+              <span>${activeDir.emoji} ${emoji}</span>
               <span style="color: #374151;">${adjustedTime}초</span>
             </div>
           `;
@@ -194,8 +201,9 @@ export function RouteMapPage() {
           `;
         }
 
+        // 교차로 정중앙이 아닌 해당 횡단보도 방향으로 마커 위치 오차 적용
         const marker = new window.Tmapv3.Marker({
-          position: new window.Tmapv3.LatLng(intersection.lat, intersection.lng),
+          position: new window.Tmapv3.LatLng(intersection.lat + (isAvailable ? activeDir?.latOffset : 0), intersection.lng + (isAvailable ? activeDir?.lngOffset : 0)),
           map: tmapRef.current,
           iconHTML: htmlContent,
         });
