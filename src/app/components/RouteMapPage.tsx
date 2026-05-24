@@ -90,14 +90,19 @@ export function RouteMapPage() {
     console.log(`[TMAP 렌더링] 준비 완료: 총 ${tmapPaths.length}개의 좌표로 선을 그립니다.`);
 
     // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
-    const routePolyline = new window.Tmapv3.Polyline({
-      path: tmapPaths,
-      strokeColor: "#dd7e24", 
-      strokeWeight: 6,
-      strokeOpacity: 1, // 누락 방지를 위해 투명도 명시
-      strokeStyle: "solid",
-      map: map, // TMAP 생태계 특성상 생성과 동시에 map 객체를 바인딩해야 렌더링 누락이 발생하지 않음
-    });
+    // TMAP WebGL 엔진이 지도를 화면에 완전히 준비하기 전에 Polyline을 추가하면 
+    // 선이 증발하는 타이밍 버그가 있습니다. 이를 막기 위해 0.5초 딜레이를 줍니다.
+    setTimeout(() => {
+      if (!tmapRef.current) return; // 그 사이 사용자가 뒤로가기를 눌렀다면 취소
+      new window.Tmapv3.Polyline({
+        path: tmapPaths,
+        strokeColor: "#4F46E5", // 앱 테마에 어울리는 예쁜 인디고 색상
+        strokeWeight: 6,
+        strokeOpacity: 1,
+        strokeStyle: "solid",
+        map: tmapRef.current, 
+      });
+    }, 500);
 
     // 시작점 마커
     const startMarker = new window.Tmapv3.Marker({
