@@ -100,6 +100,7 @@ export function RouteMapPage() {
         strokeWeight: 6,
         strokeOpacity: 1,
         strokeStyle: "solid",
+        direction: true, // 💡 러닝 진행 방향 화살표 추가
         map: tmapRef.current, 
       });
     }, 500);
@@ -221,8 +222,32 @@ export function RouteMapPage() {
       </div>
 
       {/* TMAP 영역 */}
-      <div className="flex-1 w-full relative z-0">
+      <div className="flex-1 w-full relative z-0 overflow-hidden">
         <div id={mapContainerId} className="w-full h-full" />
+        
+        {/* 🌸 벚꽃길 코스 전용 이펙트 */}
+        {routeInfo?.conceptType === 'cherryblossom' && (
+          <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute animate-fall text-pink-300 drop-shadow-sm"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `-10%`,
+                  animationDuration: `${Math.random() * 4 + 4}s`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  opacity: Math.random() * 0.6 + 0.4,
+                  fontSize: `${Math.random() * 12 + 10}px`
+                }}
+              >🌸</div>
+            ))}
+            <style>{`
+              @keyframes fall { 0% { transform: translateY(-10vh) rotate(0deg) translateX(0); } 50% { transform: translateY(50vh) rotate(180deg) translateX(20px); } 100% { transform: translateY(110vh) rotate(360deg) translateX(-20px); } }
+              .animate-fall { animation: fall linear infinite; }
+            `}</style>
+          </div>
+        )}
       </div>
 
       {/* 📊 하단 패널: 통계 및 러닝 시작 버튼 (기존 로직 및 레이아웃 유지 + 디자인 업그레이드) */}

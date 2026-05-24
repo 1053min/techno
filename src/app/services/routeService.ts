@@ -116,13 +116,55 @@ export async function generateLoopRoute(start: { lat: number; lng: number }, dis
   }
 }
 
+// 💡 한강 다리를 건너는 커스텀 코스 생성 (반포대교 -> 강북 -> 동작대교 -> 강남)
+async function generateHanRiverBridgeRoute() {
+  const start = { lat: 37.5115, lng: 126.9975 }; // 반포 한강공원
+  const p1 = { lat: 37.5250, lng: 126.9930 }; // 잠수교/반포대교 북단
+  const p2 = { lat: 37.5180, lng: 126.9760 }; // 이촌 한강공원 (동작대교 북단 부근)
+  const p3 = { lat: 37.5080, lng: 126.9840 }; // 동작대교 남단
+  
+  const passList = `${p1.lng},${p1.lat}_${p2.lng},${p2.lat}_${p3.lng},${p3.lat}`;
+
+  try {
+    const response = await fetch(VERCEL_TMAP_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startX: start.lng.toString(), startY: start.lat.toString(),
+        endX: start.lng.toString(), endY: start.lat.toString(),
+        passList: passList,
+        reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
+        startName: encodeURIComponent("출발"), endName: encodeURIComponent("도착"),
+        searchOption: "30" 
+      })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.features) throw new Error("TMAP 경로 생성 실패");
+    
+    const fullPath: Array<[number, number]> = [];
+    data.features.filter((f: any) => f.geometry.type === 'LineString').forEach((f: any) => fullPath.push(...f.geometry.coordinates));
+    
+    return { path: fullPath, name: '한강 대교 크로스 런' };
+  } catch (error) {
+    return { path: [[start.lng, start.lat], [p1.lng, p1.lat], [p2.lng, p2.lat], [p3.lng, p3.lat], [start.lng, start.lat]], name: '임시 한강 대교 런' };
+  }
+}
+
 // 3. 프리셋 코스 분기 처리
 export async function generatePresetRoute(concept: 'hanriver' | 'cherryblossom' | 'interval' | 'hanyang') {
+  let routeData;
   if (concept === 'hanriver') {
-    return await generateLoopRoute(COORD_PRESETS.HANRIVER_YEOUIDO, 4); // 한강은 4km 큰 고리
+    routeData = await generateHanRiverBridgeRoute(); 
+  } else if (concept === 'interval') {
+    routeData = await generateLoopRoute(COORD_PRESETS.JAMSIL, 3); // 석촌호수(잠실) 시작으로 수정
+  } else {
+    const start = COORD_PRESETS[concept === 'hanyang' ? 'HANYANG' : 'GANGNAM'];
+    routeData = await generateLoopRoute(start, 3);
   }
-  const start = COORD_PRESETS[concept === 'hanyang' ? 'HANYANG' : 'GANGNAM'];
-  return await generateLoopRoute(start, 3);
+  
+  // 컴포넌트에서 벚꽃 이펙트 등을 띄우기 위해 conceptType 강제 주입
+  if (routeData) routeData.conceptType = concept;
+  return routeData;
 }
 
 // 4. 실제 GPX 파일 매핑 및 파싱 (드로잉 경로 누락 완벽 해결)

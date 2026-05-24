@@ -94,6 +94,7 @@ export function TrackingPageLeaflet() {
           strokeWeight: 6,
           strokeOpacity: 0.5,
           strokeStyle: "dot", // Leaflet의 dashArray와 유사한 점선 효과
+          direction: true, // 💡 가이드 경로 진행 방향 화살표
           map: tmapRef.current,
         });
       }, 500);
@@ -272,6 +273,7 @@ export function TrackingPageLeaflet() {
       strokeWeight: 5,
       strokeOpacity: 0.8,
       strokeStyle: "solid",
+      direction: true, // 💡 실제 뛴 궤적에도 방향 화살표
       map: tmapRef.current,
     });
 
@@ -434,6 +436,29 @@ export function TrackingPageLeaflet() {
       >
 
         <div id={mapContainerId} className="w-full h-full" />
+        
+        {/* 🌸 트래킹 화면 벚꽃길 코스 전용 이펙트 */}
+        {routeInfo?.conceptType === 'cherryblossom' && (
+          <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute animate-fall text-pink-300 drop-shadow-sm"
+                style={{
+                  left: `${Math.random() * 100}%`, top: `-10%`,
+                  animationDuration: `${Math.random() * 4 + 4}s`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  opacity: Math.random() * 0.6 + 0.4,
+                  fontSize: `${Math.random() * 12 + 10}px`
+                }}
+              >🌸</div>
+            ))}
+            <style>{`
+              @keyframes fall { 0% { transform: translateY(-10vh) rotate(0deg) translateX(0); } 50% { transform: translateY(50vh) rotate(180deg) translateX(20px); } 100% { transform: translateY(110vh) rotate(360deg) translateX(-20px); } }
+              .animate-fall { animation: fall linear infinite; }
+            `}</style>
+          </div>
+        )}
 
 
 
