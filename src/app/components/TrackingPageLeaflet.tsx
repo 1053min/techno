@@ -10,12 +10,6 @@ import { SEOUL_INTERSECTIONS, getSignalEmoji, getSignalFromCache } from "../serv
 
 import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
 
-import L from "leaflet";
-
-import "leaflet/dist/leaflet.css";
-
-
-
 interface PathPoint {
 
   lat: number;
@@ -26,6 +20,11 @@ interface PathPoint {
 
 }
 
+declare global {
+  interface Window {
+    Tmapv3: any;
+  }
+}
 
 
 export function TrackingPageLeaflet() {
@@ -36,9 +35,11 @@ export function TrackingPageLeaflet() {
 
   const routeInfo = location.state?.routeInfo; // 💡 전달받은 경로 정보
 
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapContainerId = "tracking-tmap-container";
   
-  const markersRef = useRef<Record<string, L.Marker>>({});
+  const tmapRef = useRef<any>(null);
+  const currentMarkerRef = useRef<any>(null);
+  const trackedPolylineRef = useRef<any>(null);
   const [isRunning, setIsRunning] = useState(false);
 
   const [time, setTime] = useState(0);
@@ -55,12 +56,6 @@ export function TrackingPageLeaflet() {
 
   } | null>(null);
 
-  const leafletMapRef = useRef<L.Map | null>(null);
-
-  const [polyline, setPolyline] = useState<L.Polyline | null>(null);
-
-  const [currentMarker, setCurrentMarker] = useState<L.Marker | null>(null);
-
   const [pathPoints, setPathPoints] = useState<PathPoint[]>([]);
 
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -73,78 +68,63 @@ export function TrackingPageLeaflet() {
 
   useEffect(() => {
 
-    if (!mapRef.current || leafletMapRef.current) return;
+    if (tmapRef.current || !window.Tmapv3) return;
 
     const startLat = routeInfo?.path?.[0]?.[1] ?? 37.5559;
 
     const startLng = routeInfo?.path?.[0]?.[0] ?? 127.0436;
 
-    const map = L.map(mapRef.current).setView([startLat, startLng], 17);
-    leafletMapRef.current = map;
-
-
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-
-      maxZoom: 19,
-
-    }).addTo(map);
+    const map = new window.Tmapv3.Map(mapContainerId, {
+      center: new window.Tmapv3.LatLng(startLat, startLng),
+      zoom: 17,
+      zoomControl: false,
+    });
+    tmapRef.current = map;
 
     if (routeInfo?.path) {
 
-      const coords = routeInfo.path.map((c: [number, number]) => [c[1], c[0]] as L.LatLngExpression);
-
-      L.polyline(coords, { color: "#4f46e5", weight: 6, opacity: 0.5, dashArray: '10, 10' }).addTo(map);
+      const tmapPaths = routeInfo.path.map((c: [number, number]) => new window.Tmapv3.LatLng(c[1], c[0]));
+      
+      // TMAP WebGL 타이밍 버그 방지 (0.5초 지연 렌더링)
+      setTimeout(() => {
+        if (!tmapRef.current) return;
+        new window.Tmapv3.Polyline({
+          path: tmapPaths,
+          strokeColor: "#4f46e5",
+          strokeWeight: 6,
+          strokeOpacity: 0.5,
+          strokeStyle: "dot", // Leaflet의 dashArray와 유사한 점선 효과
+          map: tmapRef.current,
+        });
+      }, 500);
 
     }
 
     // 현재 위치 마커
 
-    const markerIcon = L.divIcon({
-
-      html: `
-
+    currentMarkerRef.current = new window.Tmapv3.Marker({
+      position: new window.Tmapv3.LatLng(startLat, startLng),
+      map: map,
+      iconHTML: `
         <div style="
-
           width: 16px;
-
           height: 16px;
-
           background: #6366f1;
-
           border: 4px solid white;
-
           border-radius: 50%;
-
           box-shadow: 0 2px 8px rgba(99, 102, 241, 0.5);
-
+          transform: translate(-50%, -50%);
         "></div>
-
       `,
-
-      className: "",
-
-      iconSize: [16, 16],
-
-      iconAnchor: [8, 8],
-
     });
-
-
-
-    const marker = L.marker([startLat, startLng], { icon: markerIcon }).addTo(map);
-
-    setCurrentMarker(marker);
-
-    leafletMapRef.current = map;
-
-
 
     return () => {
 
-      map.remove();
+      if (tmapRef.current) {
+        const mapDiv = document.getElementById(mapContainerId);
+        if (mapDiv) mapDiv.innerHTML = "";
+        tmapRef.current = null;
+      }
 
     };
 
@@ -156,7 +136,7 @@ export function TrackingPageLeaflet() {
 
   useEffect(() => {
 
-    if (!isRunning || !leafletMapRef.current) return;
+    if (!isRunning || !tmapRef.current) return;
 
 
 
@@ -218,15 +198,15 @@ export function TrackingPageLeaflet() {
 
         // 지도 중심 이동
 
-        leafletMapRef.current?.setView([newPoint.lat, newPoint.lng]);
+        tmapRef.current?.setCenter(new window.Tmapv3.LatLng(newPoint.lat, newPoint.lng));
 
 
 
         // 마커 위치 업데이트
 
-        if (currentMarker) {
+        if (currentMarkerRef.current) {
 
-          currentMarker.setLatLng([newPoint.lat, newPoint.lng]);
+          currentMarkerRef.current.setPosition(new window.Tmapv3.LatLng(newPoint.lat, newPoint.lng));
 
         }
 
@@ -262,7 +242,7 @@ export function TrackingPageLeaflet() {
 
     };
 
-  }, [isRunning, currentMarker]);
+  }, [isRunning]);
 
 
 
@@ -270,35 +250,30 @@ export function TrackingPageLeaflet() {
 
   useEffect(() => {
 
-    if (!leafletMapRef.current || pathPoints.length < 2) return;
+    if (!tmapRef.current || pathPoints.length < 2) return;
 
 
 
-    if (polyline) {
+    if (trackedPolylineRef.current) {
 
-      polyline.remove();
+      trackedPolylineRef.current.setMap(null);
 
     }
 
 
 
-    const path = pathPoints.map((point) => [point.lat, point.lng] as [number, number]);
+    const path = pathPoints.map((point) => new window.Tmapv3.LatLng(point.lat, point.lng));
 
 
 
-    const newPolyline = L.polyline(path, {
-
-      color: "#6366f1",
-
-      weight: 5,
-
-      opacity: 0.8,
-
-    }).addTo(leafletMapRef.current);
-
-
-
-    setPolyline(newPolyline);
+    trackedPolylineRef.current = new window.Tmapv3.Polyline({
+      path: path,
+      strokeColor: "#6366f1",
+      strokeWeight: 5,
+      strokeOpacity: 0.8,
+      strokeStyle: "solid",
+      map: tmapRef.current,
+    });
 
   }, [pathPoints]);
 
@@ -458,7 +433,7 @@ export function TrackingPageLeaflet() {
 
       >
 
-        <div ref={mapRef} className="w-full h-full" />
+        <div id={mapContainerId} className="w-full h-full" />
 
 
 
