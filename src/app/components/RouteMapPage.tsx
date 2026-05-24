@@ -85,18 +85,19 @@ export function RouteMapPage() {
         }
       }
     });
+    
+    // 💡 디버깅용: F12 콘솔에서 변환된 좌표가 몇 개인지 확인할 수 있도록 출력
+    console.log(`[TMAP 렌더링] 준비 완료: 총 ${tmapPaths.length}개의 좌표로 선을 그립니다.`);
 
     // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
     const routePolyline = new window.Tmapv3.Polyline({
       path: tmapPaths,
-      strokeColor: "#dd7e24", // 인디고 컬러 (HEX 대문자 권장)
+      strokeColor: "#dd7e24", 
       strokeWeight: 6,
       strokeOpacity: 1, // 누락 방지를 위해 투명도 명시
       strokeStyle: "solid",
+      map: map, // TMAP 생태계 특성상 생성과 동시에 map 객체를 바인딩해야 렌더링 누락이 발생하지 않음
     });
-    
-    // TMAP 버그 방지: 생성 시 map 객체를 넣지 않고 setMap으로 명시적 부착
-    routePolyline.setMap(map);
 
     // 시작점 마커
     const startMarker = new window.Tmapv3.Marker({
