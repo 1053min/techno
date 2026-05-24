@@ -8,21 +8,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const TMAP_API_KEY = process.env.TMAP_API_KEY;
     const body = req.body;
 
-    // 💡 실패 좌표를 인도로 보정하기 위한 주변 장소(POI) 검색 API 분기
-    if (body.action === 'poi') {
-      const { centerLon, centerLat } = body;
-      // 주변 반경 내 가장 가까운 상업시설(편의점 등 인도와 맞닿은 곳) 1개를 찾아 좌표 확보
-      const poiUrl = `https://apis.openapi.sk.com/tmap/pois/search/around?version=1&format=json&categories=${encodeURIComponent('편의점')}&resCoordType=WGS84GEO&reqCoordType=WGS84GEO&centerLon=${centerLon}&centerLat=${centerLat}&radius=1&count=1`;
-      
-      const poiResponse = await fetch(poiUrl, {
-        method: 'GET',
-        headers: { 'appKey': TMAP_API_KEY! },
-      });
-      
-      const poiData = await poiResponse.json();
-      return res.status(200).json(poiData);
-    }
-
     // [디버그] 프론트엔드에서 보낸 좌표 확인
     console.log('TMAP API 요청 바디:', JSON.stringify(body));
 
@@ -44,7 +29,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    // TMAP 에러 시 XML이나 HTML이 반환되어 파싱 에러(500)가 나는 것을 방지
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      data = { rawText: responseText };
+    }
 
     // 💡 에러 발생 시 상세 내용을 프론트로 쏴주어 개발자 도구(F12)에서 바로 보이게 함
     if (!response.ok) {

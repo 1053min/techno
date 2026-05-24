@@ -39,8 +39,17 @@ export function RouteMapPage() {
   // 1. RoutesPage에서 선택한 경로(GPX 기반 데이터) 불러오기
   useEffect(() => {
     const rawData = sessionStorage.getItem('selected_run_route');
-    if (rawData) {
-      setRouteInfo(JSON.parse(rawData));
+    if (!rawData) return;
+
+    const data = JSON.parse(rawData);
+    // data.path가 이미 배열로 있다면(GPX/Drawing), 그대로 사용
+    // 없다면 TMAP API를 호출해서 경로를 생성하도록 분기 처리
+    if (data.path && data.path.length > 0) {
+      setRouteInfo(data);
+    } else {
+      // 데이터가 온전히 넘어오지 않은 경우 안전하게 뒤로가기
+      console.error("경로 데이터를 불러오지 못했습니다.");
+      navigate(-1);
     }
   }, []);
 
