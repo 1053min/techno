@@ -3,35 +3,96 @@
  * 기존 routeService.ts에 영향을 주지 않고 새로운 알고리즘을 테스트하기 위한 파일입니다.
  */
 
+const VERCEL_TMAP_API = '/api/tmap';
+
+// 좌표 간 거리 계산 (km)
+function getDistKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
 // 1. 내 주변 맞춤 쾌적 경로 생성 알고리즘
 export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number) {
   console.log(`[Algorithm 1] ${distanceKm}km 쾌적 경로 탐색 시작. 기준점: ${currentLat}, ${currentLng}`);
   
-  /**
-   * 💡 [알고리즘 구현 계획]
-   * 1. 후보지 생성: currentLat, currentLng 기준 반경 100m 내 도로 노드를 시작점으로 잡음.
-   * 2. 다각형 경유지 설정: distanceKm / (2 * Math.PI) 반경의 원형 폴리곤을 생성해 경유지 10개 추출.
-   * 3. TMAP API 호출: 보행자 경로 API에 경유지를 넣어 실제 경로 Fetch.
-   * 4. 쾌적도 평가 (Scoring):
-   *    - facilityType === '14'(계단), '15'(경사로), '17'(육교) 포함 시 점수 대폭 차감 (-50점)
-   *    - pointType === 'CP'(횡단보도) 개수당 점수 차감 (-5점)
-   *    - 거리 오차율(목표 거리와 실제 거리의 차이)에 따른 감점
-   * 5. 최상위 3개 경로 필터링 후 반환
-   */
+  // 대략적인 반경 (둘레가 distanceKm가 되기 위한 사각형 한 변의 길이)
+  const sideKm = distanceKm / 4;
+  const latOffset = sideKm * 0.009; // 1km ≒ 0.009 위도
+  const lngOffset = sideKm * 0.011; // 1km ≒ 0.011 경도
 
-  // TODO: 실제 TMAP API 연동 및 Scoring 로직 적용
-  // 현재는 테스트용 Mock 데이터 반환 (한양대 주변 3km 가상 루프)
-  return {
-    name: `반경 100m 시작, ${distanceKm}km 쾌적 코스`,
-    conceptType: 'beta_comfort',
-    path: [
-      [127.0436, 37.5559],
-      [127.0450, 37.5560],
-      [127.0460, 37.5540],
-      [127.0420, 37.5530],
-      [127.0436, 37.5559], // Loop
-    ]
-  };
+  // 3가지 다른 방향의 루프 생성 (북동, 북서, 남쪽)
+  const candidates = [
+    { id: 1, name: "도시 중심 탐험 코스", p1: { lat: currentLat, lng: currentLng + lngOffset }, p2: { lat: currentLat + latOffset, lng: currentLng + lngOffset }, p3: { lat: currentLat + latOffset, lng: currentLng } },
+    { id: 2, name: "강변/하천 외곽 코스", p1: { lat: currentLat, lng: currentLng - lngOffset }, p2: { lat: currentLat + latOffset, lng: currentLng - lngOffset }, p3: { lat: currentLat + latOffset, lng: currentLng } },
+    { id: 3, name: "골목길 회피 직선 코스", p1: { lat: currentLat - latOffset, lng: currentLng }, p2: { lat: currentLat - latOffset, lng: currentLng + lngOffset }, p3: { lat: currentLat, lng: currentLng + lngOffset } },
+  ];
+
+  const results = [];
+
+  for (const cand of candidates) {
+    const passList = `${cand.p1.lng},${cand.p1.lat}_${cand.p2.lng},${cand.p2.lat}_${cand.p3.lng},${cand.p3.lat}`;
+    try {
+      const res = await fetch(VERCEL_TMAP_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startX: currentLng.toString(), startY: currentLat.toString(),
+          endX: currentLng.toString(), endY: currentLat.toString(),
+          passList: passList,
+          reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
+          startName: "출발", endName: "도착", searchOption: "30" // 30: 보행자 맞춤
+        })
+      });
+      const data = await res.json();
+      
+      if (data.features) {
+        let score = 100;
+        let stairCount = 0;
+        let crosswalkCount = 0;
+        let actualDist = 0;
+        const fullPath: Array<[number, number]> = [];
+
+        data.features.forEach((f: any) => {
+          // 인도 선형 좌표 추출
+          if (f.geometry.type === 'LineString') {
+            fullPath.push(...f.geometry.coordinates);
+            if (f.properties?.facilityType === '14' || f.properties?.facilityType === '15') {
+              stairCount++;
+              score -= 15; // 계단, 가파른 경사 패널티
+            }
+          }
+          // 횡단보도(CP) 포인트 카운트
+          if (f.geometry.type === 'Point' && f.properties?.pointType === 'CP') {
+            crosswalkCount++;
+            score -= 3; // 횡단보도 패널티
+          }
+        });
+
+        actualDist = Number((data.features[0]?.properties?.totalDistance / 1000).toFixed(2)) || distanceKm;
+        // 거리 오차 패널티
+        score -= Math.abs(distanceKm - actualDist) * 10;
+
+        results.push({
+          id: cand.id,
+          name: cand.name,
+          conceptType: 'beta_comfort',
+          path: fullPath,
+          distance: actualDist,
+          score: Math.max(0, score),
+          stairCount,
+          crosswalkCount,
+        });
+      }
+    } catch (e) {
+      console.warn("후보군 API 호출 에러", e);
+    }
+  }
+
+  // 점수(쾌적도) 순으로 정렬하여 반환
+  return results.sort((a, b) => b.score - a.score).slice(0, 3);
 }
 
 
@@ -39,68 +100,99 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
 export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'cat') {
   console.log(`[Algorithm 2] 서울시 전체 대상 '${shapeType}' 도안 맵핑 시작.`);
   
-  /**
-   * 💡 [알고리즘 구현 계획: Template Matching on Road Graph]
-   * 1. 템플릿 정규화:
-   *    - 하트(Heart) 도안의 꼭짓점 벡터 템플릿 배열(0.0~1.0 비율) 로드
-   * 2. 검색 공간 정의:
-   *    - 서울시의 주요 교차로 Graph Data (또는 Overpass API 추출 도로망)
-   * 3. 슬라이딩 윈도우 & 회전 (Sliding Window & Rotation):
-   *    - 특정 동네(Bounding Box)에 템플릿을 스케일링하여 오버레이.
-   *    - 0~360도(10도 단위) 회전시키며, 템플릿의 각 꼭짓점과 가장 가까운 실제 '도로 노드'와의 거리 오차(Hausdorff distance) 계산.
-   * 4. 도로 스내핑(Snapping):
-   *    - 오차가 가장 적은(가장 잘 들어맞는) 위치와 각도를 찾으면, 해당 도로 노드들을 경유지로 삼아 TMAP 보행자 API 호출.
-   * 5. 유저에게 "서울숲 인근에서 가장 예쁜 하트를 그릴 수 있어요!" 형태의 결과 제공
-   */
-
-  const templates = {
+  // 0~1.0 비율로 정규화된 템플릿 (크기, 위치 없음)
+  const normalizedTemplates = {
     heart: [
-      [127.038, 37.545], // 하트 상단 좌측
-      [127.041, 37.546], // 하트 파인 곳
-      [127.044, 37.545], // 하트 상단 우측
-      [127.045, 37.542], // 우측면
-      [127.041, 37.538], // 하단 뾰족한 곳
-      [127.037, 37.542], // 좌측면
-      [127.038, 37.545], // Loop
+      [0.2, 0.8], [0.5, 0.9], [0.8, 0.8], [0.9, 0.5], [0.5, 0.1], [0.1, 0.5]
     ],
     star: [
-      [127.0410, 37.5460], // 상단 뾰족
-      [127.0425, 37.5420], // 우측 하단 뾰족
-      [127.0380, 37.5440], // 좌측 상단 뾰족
-      [127.0440, 37.5440], // 우측 상단 뾰족
-      [127.0395, 37.5420], // 좌측 하단 뾰족
-      [127.0410, 37.5460], // Loop (별 그리기 순서)
-    ]
-    ,
+      [0.5, 0.9], [0.65, 0.5], [0.2, 0.7], [0.8, 0.7], [0.35, 0.5]
+    ],
     cat: [
-      [127.037, 37.544], // 코 (가장 좌측)
-      [127.038, 37.546], // 이마
-      [127.039, 37.547], // 귀 끝 (최상단 뾰족)
-      [127.041, 37.545], // 뒷목
-      [127.045, 37.545], // 굽은 등
-      [127.047, 37.543], // 꼬리 시작점
-      [127.049, 37.546], // 꼬리 끝 (위로 치켜세움)
-      [127.048, 37.542], // 꼬리 아랫부분
-      [127.045, 37.538], // 뒷다리
-      [127.043, 37.541], // 배
-      [127.041, 37.538], // 앞다리
-      [127.039, 37.541], // 가슴
-      [127.037, 37.544], // 코로 돌아옴 (Loop)
+      [0.1, 0.6], [0.2, 0.8], [0.3, 0.9], [0.5, 0.7], [0.9, 0.7] // 주요 꺾임 포인트 5개로 압축 (API 경유지 한계)
     ]
   };
 
-  // TODO: 실제 전체 탐색 후 매칭된 도로망 API 좌표 반환 로직 적용
-  // 현재는 테스트용 Mock 데이터 반환 (서울숲 부근의 가상 좌표)
-  
-  // 좀 더 촘촘한 좌표를 만들기 위해 Mock 보간 (실제로는 TMAP API가 해줄 역할)
-  const generateMockPath = (points: number[][]) => {
-    // 간이 테스트를 위해 선분 사이를 촘촘하게 쪼갭니다 (생략)
-    return points; 
-  };
+  const template = normalizedTemplates[shapeType];
+
+  // 서울시 넓은 공터가 있는 3대 거점 후보 (템플릿 매칭 서치 스페이스)
+  const candidateZones = [
+    { name: "여의도 공원 일대", lat: 37.5255, lng: 126.9240 },
+    { name: "올림픽공원 평화의광장", lat: 37.5186, lng: 127.1154 },
+    { name: "보라매공원 트랙", lat: 37.4940, lng: 126.9180 }
+  ];
+
+  let bestZone = null;
+  let bestPath: any[] = [];
+  let minError = Infinity;
+
+  // 스케일링 팩터 (~2km 내외로 크기 확대)
+  const scaleLat = 0.015;
+  const scaleLng = 0.020;
+
+  // 각 거점별로 템플릿을 확대 적용하여 실제 도로망 TMAP 매칭 시도
+  for (const zone of candidateZones) {
+    const realPoints = template.map(pt => ({
+      lat: zone.lat + (pt[1] - 0.5) * scaleLat,
+      lng: zone.lng + (pt[0] - 0.5) * scaleLng
+    }));
+
+    // 시작점, 도착점, 그리고 사이를 잇는 다중 경유지 문자열 생성
+    const start = realPoints[0];
+    const passList = realPoints.slice(1, -1).map(pt => `${pt.lng},${pt.lat}`).join('_');
+    const end = realPoints[realPoints.length - 1]; // 끝점이 도착점 (이후 시작점으로 돌아오는 처리는 컴포넌트나 API 응답에서 Loop 보정)
+
+    try {
+      const res = await fetch(VERCEL_TMAP_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startX: start.lng.toString(), startY: start.lat.toString(),
+          endX: start.lng.toString(), endY: start.lat.toString(), // 닫힌 도형이 아닐 경우 시작점 = 도착점
+          passList: passList,
+          reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
+          startName: "시작", endName: "도착", searchOption: "30"
+        })
+      });
+      
+      const data = await res.json();
+      if (data.features) {
+        let fullPath: Array<[number, number]> = [];
+        data.features.forEach((f: any) => {
+          if (f.geometry.type === 'LineString') {
+            fullPath.push(...f.geometry.coordinates);
+          }
+        });
+        
+        // 시작점과 끝점을 억지로 이어서 Loop를 만듦
+        if (fullPath.length > 0) {
+          fullPath.push(fullPath[0]);
+        }
+
+        // 도로망과의 매칭 오차 단순 계산 (경로를 찾는 데 성공한 것 자체로 점수 부여, 거리가 너무 길면 페널티)
+        const apiDistance = data.features[0]?.properties?.totalDistance || 0;
+        const error = Math.abs(2000 - apiDistance); // 2km 형태가 이상적이라고 가정
+
+        if (error < minError) {
+          minError = error;
+          bestZone = zone.name;
+          bestPath = fullPath;
+        }
+      }
+    } catch (e) {
+      console.warn("Art Mapping TMAP 호출 실패", e);
+    }
+  }
+
+  // API 통신 완전 실패 시 Mock fallback 방지용 에러 던지거나 기본값 리턴
+  if (bestPath.length === 0) {
+     console.warn("적합한 도로망을 찾지 못했습니다.");
+     return null;
+  }
 
   return {
-    name: `서울시 최적 위치 '${shapeType === 'heart' ? '하트' : shapeType === 'star' ? '별' : '고양이 옆모습'}' 아트 코스`,
+    name: `최적 맵핑 성공! '${bestZone}' ${shapeType === 'heart' ? '하트' : shapeType === 'star' ? '별' : '고양이'} 코스`,
     conceptType: `beta_art_${shapeType}`,
-    path: generateMockPath(templates[shapeType])
+    path: bestPath
   };
 }
