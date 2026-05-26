@@ -38,7 +38,7 @@ export function BetaRoutePage() {
   };
 
   // 2. GPS 아트 매핑 테스트 핸들러
-  const handleTestArtRoute = async (shapeType: 'heart' | 'star' | 'cat') => {
+  const handleTestArtRoute = async (shapeType: 'heart' | 'star' | 'thumbsup') => {
     setLoading(true);
     const result = await findBestArtMapping(shapeType);
     
@@ -145,9 +145,9 @@ export function BetaRoutePage() {
                   <span className="text-sm font-bold text-slate-300">별 그리기</span>
                 </button>
 
-                <button onClick={() => handleTestArtRoute('cat')} className="bg-slate-800 border border-slate-700 hover:bg-slate-700 p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">
-                  <span className="text-3xl">🐈</span>
-                  <span className="text-sm font-bold text-slate-300">고양이 그리기</span>
+                <button onClick={() => handleTestArtRoute('thumbsup')} className="bg-slate-800 border border-slate-700 hover:bg-slate-700 p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">
+                  <span className="text-3xl">👍</span>
+                  <span className="text-sm font-bold text-slate-300">엄지척 그리기</span>
                 </button>
               </div>
             </div>

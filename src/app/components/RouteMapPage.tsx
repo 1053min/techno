@@ -160,18 +160,19 @@ export function RouteMapPage() {
         const isAvailable = !!signal;
         let htmlContent = '';
 
+        // 💡 횡단보도 방향 데이터를 if 블록 밖으로 꺼내서 스코프 에러(ReferenceError) 해결
+        const directions = [
+          { key: 'ntPdsgRmdrCs', emoji: '↑', latOffset: 0.00015, lngOffset: 0 },
+          { key: 'stPdsgRmdrCs', emoji: '↓', latOffset: -0.00015, lngOffset: 0 },
+          { key: 'etPdsgRmdrCs', emoji: '→', latOffset: 0, lngOffset: 0.00015 },
+          { key: 'wtPdsgRmdrCs', emoji: '←', latOffset: 0, lngOffset: -0.00015 }
+        ];
+        let activeDir = directions[0];
+
         if (isAvailable) {
           // 오차 보정 로직 적용
           const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
           
-          // 💡 횡단보도와 신호 연결: 방향 데이터를 통해 팝업창을 실제 횡단보도 위로 미세 이동시킵니다.
-          const directions = [
-            { key: 'ntPdsgRmdrCs', emoji: '↑', latOffset: 0.00015, lngOffset: 0 },
-            { key: 'stPdsgRmdrCs', emoji: '↓', latOffset: -0.00015, lngOffset: 0 },
-            { key: 'etPdsgRmdrCs', emoji: '→', latOffset: 0, lngOffset: 0.00015 },
-            { key: 'wtPdsgRmdrCs', emoji: '←', latOffset: 0, lngOffset: -0.00015 }
-          ];
-          let activeDir = directions[0];
           let validTimeCs = 0;
           
           for (const dir of directions) {
