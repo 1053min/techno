@@ -2,6 +2,7 @@
  * [베타] 고도화된 경로 탐색 및 GPS 아트 맵핑 서비스
  * 기존 routeService.ts에 영향을 주지 않고 새로운 알고리즘을 테스트하기 위한 파일입니다.
  */
+import { INTERSECTION_LOCATIONS } from './intersectionData';
 
 const VERCEL_TMAP_API = '/api/tmap';
 
@@ -23,11 +24,14 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
   const latOffset = sideKm * 0.009; // 1km ≒ 0.009 위도
   const lngOffset = sideKm * 0.011; // 1km ≒ 0.011 경도
 
-  // 3가지 다른 방향의 루프 생성 (북동, 북서, 남쪽)
+  // 실패 확률을 줄이기 위해 6가지 방향으로 후보군 대폭 확대
   const candidates = [
-    { id: 1, name: "도시 중심 탐험 코스", p1: { lat: currentLat, lng: currentLng + lngOffset }, p2: { lat: currentLat + latOffset, lng: currentLng + lngOffset }, p3: { lat: currentLat + latOffset, lng: currentLng } },
-    { id: 2, name: "강변/하천 외곽 코스", p1: { lat: currentLat, lng: currentLng - lngOffset }, p2: { lat: currentLat + latOffset, lng: currentLng - lngOffset }, p3: { lat: currentLat + latOffset, lng: currentLng } },
-    { id: 3, name: "골목길 회피 직선 코스", p1: { lat: currentLat - latOffset, lng: currentLng }, p2: { lat: currentLat - latOffset, lng: currentLng + lngOffset }, p3: { lat: currentLat, lng: currentLng + lngOffset } },
+    { id: 1, name: "북동쪽 도심 탐험 코스", p1: { lat: currentLat, lng: currentLng + lngOffset }, p2: { lat: currentLat + latOffset, lng: currentLng + lngOffset }, p3: { lat: currentLat + latOffset, lng: currentLng } },
+    { id: 2, name: "북서쪽 외곽 순환 코스", p1: { lat: currentLat, lng: currentLng - lngOffset }, p2: { lat: currentLat + latOffset, lng: currentLng - lngOffset }, p3: { lat: currentLat + latOffset, lng: currentLng } },
+    { id: 3, name: "남동쪽 주거지 코스", p1: { lat: currentLat, lng: currentLng + lngOffset }, p2: { lat: currentLat - latOffset, lng: currentLng + lngOffset }, p3: { lat: currentLat - latOffset, lng: currentLng } },
+    { id: 4, name: "남서쪽 골목길 회피 코스", p1: { lat: currentLat, lng: currentLng - lngOffset }, p2: { lat: currentLat - latOffset, lng: currentLng - lngOffset }, p3: { lat: currentLat - latOffset, lng: currentLng } },
+    { id: 5, name: "동쪽 가로지르기 코스", p1: { lat: currentLat + (latOffset/2), lng: currentLng + lngOffset }, p2: { lat: currentLat, lng: currentLng + (lngOffset*1.5) }, p3: { lat: currentLat - (latOffset/2), lng: currentLng + lngOffset } },
+    { id: 6, name: "서쪽 직선 위주 코스", p1: { lat: currentLat + (latOffset/2), lng: currentLng - lngOffset }, p2: { lat: currentLat, lng: currentLng - (lngOffset*1.5) }, p3: { lat: currentLat - (latOffset/2), lng: currentLng - lngOffset } },
   ];
 
   const results = [];
@@ -40,7 +44,7 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           startX: currentLng.toString(), startY: currentLat.toString(),
-          endX: currentLng.toString(), endY: currentLat.toString(),
+          endX: (currentLng + 0.0001).toString(), endY: currentLat.toString(), // 출발/도착지 동일 에러 방지
           passList: passList,
           reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
           startName: "출발", endName: "도착", searchOption: "30" // 30: 보행자 맞춤
@@ -91,6 +95,27 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
     }
   }
 
+  // TMAP API가 모두 실패하여 빈 배열이 반환되면 UI가 튕기는 현상 방지용 Fallback
+  if (results.length === 0) {
+    console.warn("모든 쾌적 경로 API 탐색이 실패하여 임시 다각형을 반환합니다.");
+    results.push({
+      id: 99,
+      name: "기본 순환 코스 (안전모드)",
+      conceptType: 'beta_comfort',
+      path: [
+        [currentLng, currentLat], 
+        [currentLng + lngOffset, currentLat], 
+        [currentLng + lngOffset, currentLat + latOffset], 
+        [currentLng, currentLat + latOffset], 
+        [currentLng, currentLat]
+      ],
+      distance: distanceKm,
+      score: 50,
+      stairCount: 0,
+      crosswalkCount: 0,
+    });
+  }
+
   // 점수(쾌적도) 순으로 정렬하여 반환
   return results.sort((a, b) => b.score - a.score).slice(0, 3);
 }
@@ -115,79 +140,92 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'cat') {
 
   const template = normalizedTemplates[shapeType];
 
-  // 서울시 넓은 공터가 있는 3대 거점 후보 (템플릿 매칭 서치 스페이스)
-  const candidateZones = [
-    { name: "여의도 공원 일대", lat: 37.5255, lng: 126.9240 },
-    { name: "올림픽공원 평화의광장", lat: 37.5186, lng: 127.1154 },
-    { name: "보라매공원 트랙", lat: 37.4940, lng: 126.9180 }
-  ];
+  // 기존 3개 공원에서 벗어나, 서울시 주요 교차로 중 랜덤하게 50개를 추출하여 탐색 지점으로 사용
+  const allIntersections = Object.values(INTERSECTION_LOCATIONS);
+  const candidateZones = allIntersections
+    .sort(() => 0.5 - Math.random())
+    .slice(0, 50)
+    .map(z => ({ name: z.itstNm + " 일대", lat: z.lat, lng: z.lng }));
 
   let bestZone = null;
   let bestPath: any[] = [];
   let minError = Infinity;
 
-  // 스케일링 팩터 (~2km 내외로 크기 확대)
-  const scaleLat = 0.015;
-  const scaleLng = 0.020;
+  // 도심 속 복잡한 형태를 매핑하기 위해 크기를 조금 더 넓게(약 3~4km) 스케일링
+  const scaleLat = 0.025;
+  const scaleLng = 0.035;
 
-  // 각 거점별로 템플릿을 확대 적용하여 실제 도로망 TMAP 매칭 시도
-  for (const zone of candidateZones) {
-    const realPoints = template.map(pt => ({
-      lat: zone.lat + (pt[1] - 0.5) * scaleLat,
-      lng: zone.lng + (pt[0] - 0.5) * scaleLng
-    }));
+  // API 속도 제한(Rate Limit)을 피하기 위해 10개씩 배치(Batch) 처리
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < candidateZones.length; i += BATCH_SIZE) {
+    const batch = candidateZones.slice(i, i + BATCH_SIZE);
+    
+    const promises = batch.map(async (zone) => {
+      const realPoints = template.map(pt => ({
+        lat: zone.lat + (pt[1] - 0.5) * scaleLat,
+        lng: zone.lng + (pt[0] - 0.5) * scaleLng
+      }));
 
-    // 시작점, 도착점, 그리고 사이를 잇는 다중 경유지 문자열 생성
-    const start = realPoints[0];
-    const passList = realPoints.slice(1, -1).map(pt => `${pt.lng},${pt.lat}`).join('_');
-    const end = realPoints[realPoints.length - 1]; // 끝점이 도착점 (이후 시작점으로 돌아오는 처리는 컴포넌트나 API 응답에서 Loop 보정)
+      const start = realPoints[0];
+      const passList = realPoints.slice(1, -1).map(pt => `${pt.lng},${pt.lat}`).join('_');
 
-    try {
-      const res = await fetch(VERCEL_TMAP_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startX: start.lng.toString(), startY: start.lat.toString(),
-          endX: start.lng.toString(), endY: start.lat.toString(), // 닫힌 도형이 아닐 경우 시작점 = 도착점
-          passList: passList,
-          reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
-          startName: "시작", endName: "도착", searchOption: "30"
-        })
-      });
-      
-      const data = await res.json();
-      if (data.features) {
-        let fullPath: Array<[number, number]> = [];
-        data.features.forEach((f: any) => {
-          if (f.geometry.type === 'LineString') {
-            fullPath.push(...f.geometry.coordinates);
-          }
+      try {
+        const res = await fetch(VERCEL_TMAP_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            startX: start.lng.toString(), startY: start.lat.toString(),
+            endX: (start.lng + 0.0001).toString(), endY: start.lat.toString(),
+            passList: passList,
+            reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
+            startName: "시작", endName: "도착", searchOption: "30"
+          })
         });
         
-        // 시작점과 끝점을 억지로 이어서 Loop를 만듦
-        if (fullPath.length > 0) {
-          fullPath.push(fullPath[0]);
+        const data = await res.json();
+        if (data.features) {
+          let fullPath: Array<[number, number]> = [];
+          data.features.forEach((f: any) => {
+            if (f.geometry.type === 'LineString') {
+              fullPath.push(...f.geometry.coordinates);
+            }
+          });
+          if (fullPath.length > 0) fullPath.push(fullPath[0]); // Loop 닫기
+          
+          const apiDistance = data.features[0]?.properties?.totalDistance || 0;
+          const error = Math.abs(3500 - apiDistance); // 도심 매핑 이상적 크기 3.5km 기준 오차
+          return { zone: zone.name, fullPath, error };
         }
-
-        // 도로망과의 매칭 오차 단순 계산 (경로를 찾는 데 성공한 것 자체로 점수 부여, 거리가 너무 길면 페널티)
-        const apiDistance = data.features[0]?.properties?.totalDistance || 0;
-        const error = Math.abs(2000 - apiDistance); // 2km 형태가 이상적이라고 가정
-
-        if (error < minError) {
-          minError = error;
-          bestZone = zone.name;
-          bestPath = fullPath;
-        }
+      } catch (e) {
+        // 개별 API 에러는 무시하고 계속 진행
       }
-    } catch (e) {
-      console.warn("Art Mapping TMAP 호출 실패", e);
+      return null;
+    });
+
+    const results = await Promise.all(promises);
+    for (const res of results) {
+      if (res && res.error < minError && res.fullPath.length > 0) {
+        minError = res.error;
+        bestZone = res.zone;
+        bestPath = res.fullPath;
+      }
     }
   }
 
-  // API 통신 완전 실패 시 Mock fallback 방지용 에러 던지거나 기본값 리턴
+  // 50곳 모두 실패했을 경우 UI 튕김을 막기 위한 안전장치
   if (bestPath.length === 0) {
-     console.warn("적합한 도로망을 찾지 못했습니다.");
-     return null;
+    console.warn("적합한 도로망을 찾지 못했습니다. 임시 가상 경로를 반환합니다.");
+    const fbZone = candidateZones[0];
+    const fbPath = template.map(pt => [
+      fbZone.lng + (pt[0] - 0.5) * scaleLng,
+      fbZone.lat + (pt[1] - 0.5) * scaleLat
+    ]);
+    fbPath.push(fbPath[0]);
+    return {
+      name: `[임시] '${fbZone.name}' ${shapeType === 'heart' ? '하트' : shapeType === 'star' ? '별' : '고양이'} 코스`,
+      conceptType: `beta_art_${shapeType}`,
+      path: fbPath as [number, number][]
+    };
   }
 
   return {
