@@ -92,6 +92,15 @@ export function HomePage() {
             <div className="text-xs text-muted-foreground">Drawing Running</div>
           </button>
         </div>
+
+        {/* 🔥 베타 기능 테스트 랩 버튼 */}
+        <button
+          onClick={() => navigate("/beta-routes")}
+          className="mt-6 w-full bg-slate-900 text-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2"
+        >
+          <span className="text-xl">🧪</span>
+          <span className="font-bold text-sm">베타 기능 테스트 랩 진입</span>
+        </button>
       </div>
     </div>
   );
