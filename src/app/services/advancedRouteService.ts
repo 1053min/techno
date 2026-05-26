@@ -15,6 +15,52 @@ function getDistKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+// 💡 Bounding Box를 활용하여 TMAP 경로와 템플릿의 '형태 유사도'를 MSE(평균제곱오차)로 계산하는 핵심 함수
+function calculateShapeError(fullPath: Array<[number, number]>, template: Array<[number, number]>) {
+  if (!fullPath || fullPath.length === 0) return Infinity;
+
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  fullPath.forEach(pt => {
+    if (pt[0] < minLng) minLng = pt[0];
+    if (pt[0] > maxLng) maxLng = pt[0];
+    if (pt[1] < minLat) minLat = pt[1];
+    if (pt[1] > maxLat) maxLat = pt[1];
+  });
+  const widthLng = maxLng - minLng || 1;
+  const heightLat = maxLat - minLat || 1;
+
+  // fullPath를 템플릿 점 개수(numPoints)만큼 정규화 및 샘플링 추출
+  const sampledPath: Array<[number, number]> = [];
+  const numPoints = template.length;
+  for (let i = 0; i < numPoints; i++) {
+    const idx = Math.floor((i / (numPoints - 1)) * (fullPath.length - 1));
+    const pt = fullPath[idx];
+    sampledPath.push([(pt[0] - minLng) / widthLng, (pt[1] - minLat) / heightLat]);
+  }
+
+  // 템플릿도 바운딩 박스 기준으로 재정규화 (회전 후 크기 변동 보정)
+  let tMinX = Infinity, tMaxX = -Infinity, tMinY = Infinity, tMaxY = -Infinity;
+  template.forEach(pt => {
+    if (pt[0] < tMinX) tMinX = pt[0];
+    if (pt[0] > tMaxX) tMaxX = pt[0];
+    if (pt[1] < tMinY) tMinY = pt[1];
+    if (pt[1] > tMaxY) tMaxY = pt[1];
+  });
+  const tWidth = tMaxX - tMinX || 1;
+  const tHeight = tMaxY - tMinY || 1;
+  const normalizedTemplate = template.map(pt => [(pt[0] - tMinX) / tWidth, (pt[1] - tMinY) / tHeight]);
+
+  // 점 대 점 좌표 오차율 합산 (거리 차이 제곱합)
+  let mse = 0;
+  for (let i = 0; i < numPoints; i++) {
+    const dx = sampledPath[i][0] - normalizedTemplate[i][0];
+    const dy = sampledPath[i][1] - normalizedTemplate[i][1];
+    mse += (dx * dx + dy * dy);
+  }
+  
+  return mse / numPoints;
+}
+
 // 1. 내 주변 맞춤 쾌적 경로 생성 알고리즘
 export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number) {
   console.log(`[Algorithm 1] ${distanceKm}km 쾌적 경로 탐색 시작. 기준점: ${currentLat}, ${currentLng}`);
@@ -140,12 +186,19 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'cat') {
 
   const template = normalizedTemplates[shapeType];
 
-  // 기존 3개 공원에서 벗어나, 서울시 주요 교차로 중 랜덤하게 50개를 추출하여 탐색 지점으로 사용
+  // 속도를 위해 탐색 거점을 10개로 축소하는 대신, 각 거점마다 45도 간격으로 360도 회전하며 매핑 시도
   const allIntersections = Object.values(INTERSECTION_LOCATIONS);
   const candidateZones = allIntersections
     .sort(() => 0.5 - Math.random())
-    .slice(0, 50)
+    .slice(0, 10)
     .map(z => ({ name: z.itstNm + " 일대", lat: z.lat, lng: z.lng }));
+
+  // 45도 간격 라디안 배열 (0, 45, 90, 135, 180, 225, 270, 315)
+  const angles = [0, 45, 90, 135, 180, 225, 270, 315].map(deg => (deg * Math.PI) / 180);
+  
+  // 검색 태스크 큐 (거점 10곳 * 회전 8개 = 총 80가지 경우의 수)
+  const searchTasks: { zone: any, angle: number }[] = [];
+  candidateZones.forEach(zone => angles.forEach(angle => searchTasks.push({ zone, angle })));
 
   let bestZone = null;
   let bestPath: any[] = [];
@@ -157,11 +210,19 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'cat') {
 
   // API 속도 제한(Rate Limit)을 피하기 위해 10개씩 배치(Batch) 처리
   const BATCH_SIZE = 10;
-  for (let i = 0; i < candidateZones.length; i += BATCH_SIZE) {
-    const batch = candidateZones.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < searchTasks.length; i += BATCH_SIZE) {
+    const batch = searchTasks.slice(i, i + BATCH_SIZE);
     
-    const promises = batch.map(async (zone) => {
-      const realPoints = template.map(pt => ({
+    const promises = batch.map(async ({ zone, angle }) => {
+      // 중심(0.5, 0.5)을 기준으로 템플릿 회전 적용 수학 공식
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const rotatedTemplate = template.map(pt => [
+        (pt[0] - 0.5) * cos - (pt[1] - 0.5) * sin + 0.5,
+        (pt[1] - 0.5) * cos + (pt[0] - 0.5) * sin + 0.5
+      ]);
+
+      const realPoints = rotatedTemplate.map(pt => ({
         lat: zone.lat + (pt[1] - 0.5) * scaleLat,
         lng: zone.lng + (pt[0] - 0.5) * scaleLng
       }));
@@ -192,8 +253,13 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'cat') {
           });
           if (fullPath.length > 0) fullPath.push(fullPath[0]); // Loop 닫기
           
+          // 💡 TMAP 경로(도로망)가 회전된 템플릿의 형태와 얼마나 유사한지 점수화
+          const shapeError = calculateShapeError(fullPath, rotatedTemplate);
           const apiDistance = data.features[0]?.properties?.totalDistance || 0;
-          const error = Math.abs(3500 - apiDistance); // 도심 매핑 이상적 크기 3.5km 기준 오차
+          const distError = Math.abs(3500 - apiDistance) / 3500; 
+          
+          // 형태 보존이 가장 중요하므로 가중치 80% 적용
+          const error = shapeError * 0.8 + distError * 0.2; 
           return { zone: zone.name, fullPath, error };
         }
       } catch (e) {

@@ -7,21 +7,34 @@ export function BetaRoutePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [distance, setDistance] = useState<number>(3);
+  const [comfortCandidates, setComfortCandidates] = useState<any[]>([]);
 
   // 1. 쾌적 경로 생성 테스트 핸들러
   const handleTestComfortRoute = async () => {
     setLoading(true);
-    // 현재 위치를 하드코딩 (실제로는 navigator.geolocation 사용)
-    const mockLat = 37.5559;
-    const mockLng = 127.0436;
+    setComfortCandidates([]); // 초기화
     
-    const result = await generateComfortRoute(distance, mockLat, mockLng);
-    
-    if (result) {
-      sessionStorage.setItem('selected_run_route', JSON.stringify(result));
-      navigate("/route-map"); // 기존 지도 컴포넌트 재활용
+    if (!navigator.geolocation) {
+      alert("브라우저가 위치 정보를 지원하지 않습니다.");
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    // 실제 GPS 위치 수신
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const results = await generateComfortRoute(distance, latitude, longitude);
+        setComfortCandidates(results);
+        setLoading(false);
+      },
+      async (error) => {
+        console.error("위치 가져오기 실패", error);
+        alert("위치를 가져오는 데 실패했습니다.");
+        setLoading(false);
+      },
+      { enableHighAccuracy: true }
+    );
   };
 
   // 2. GPS 아트 매핑 테스트 핸들러
@@ -35,6 +48,11 @@ export function BetaRoutePage() {
     }
     setLoading(false);
   };
+
+  const handleSelectComfortCandidate = (route: any) => {
+    sessionStorage.setItem('selected_run_route', JSON.stringify(route));
+    navigate("/route-map");
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pb-12">
@@ -77,9 +95,33 @@ export function BetaRoutePage() {
                 />
               </div>
 
-              <button onClick={handleTestComfortRoute} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all">
-                동적 쾌적 경로 생성 테스트
-              </button>
+              {!comfortCandidates.length ? (
+                <button onClick={handleTestComfortRoute} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all">
+                  현재 위치로 경로 후보 탐색 시작
+                </button>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  <div className="text-xs font-bold text-emerald-400 mb-2">분석 완료! 마음에 드는 코스를 선택하세요.</div>
+                  {comfortCandidates.map((route, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => handleSelectComfortCandidate(route)}
+                      className="w-full text-left bg-slate-800 p-4 rounded-xl hover:bg-slate-700 transition-colors border border-slate-700"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-sm text-slate-100">{route.name}</h3>
+                        <span className="text-xs bg-slate-900 text-emerald-400 px-2 py-1 rounded-md">쾌적도 {route.score}점</span>
+                      </div>
+                      <div className="flex gap-4 text-[11px] text-slate-400">
+                        <span>📏 {route.distance} km</span>
+                        <span>🚦 횡단보도 {route.crosswalkCount}개</span>
+                        {route.stairCount > 0 && <span className="text-rose-400">⚠️ 계단/단차 {route.stairCount}구간</span>}
+                      </div>
+                    </button>
+                  ))}
+                  <button onClick={() => setComfortCandidates([])} className="text-xs text-slate-500 w-full text-center pt-2">다시 검색하기</button>
+                </div>
+              )}
             </div>
 
             {/* 알고리즘 2번 랩 */}
