@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Pause, Play, Square, Maximize2, Minimize2, ArrowLeft } from "lucide-react";
+import { Pause, Play, Square, Maximize2, Minimize2, ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 import { updateAllSignals, getSignalFromCache, getSignalEmoji } from "../services/trafficSignalService";
 import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
@@ -33,7 +33,10 @@ export function TrackingPage() {
   const [nextSignal, setNextSignal] = useState<{ emoji: string; time: number; status: string; } | null>(null);
   const [pathPoints, setPathPoints] = useState<PathPoint[]>([]);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  
   const watchIdRef = useRef<number | null>(null);
+  const lastAnnouncedIdRef = useRef<string | null>(null); // 중복 음성 안내 방지용
 
   useEffect(() => {
     if (!routeInfo) {
@@ -41,6 +44,16 @@ export function TrackingPage() {
       navigate(-1);
     }
   }, [routeInfo, navigate]);
+
+  // 🔊 TTS (Text-to-Speech) 유틸리티 함수
+  const speak = (text: string) => {
+    if (!isVoiceEnabled || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel(); // 이전 음성 큐 비우기
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 1.15; // 러닝에 맞게 살짝 빠른 템포
+    window.speechSynthesis.speak(utterance);
+  };
 
   // 1. TMAP 지도 초기화 및 가이드 경로(Gradient) 렌더링
   useEffect(() => {
@@ -223,6 +236,18 @@ export function TrackingPage() {
             time: adjustedTime,
             status: adjustedTime > 0 ? "초록불" : "빨간불",
           });
+
+          // 🔊 음성 가이드: 새로운 교차로 접근 시 남은 시간에 따라 브리핑 (중복 안내 방지)
+          if (closest.itstId !== lastAnnouncedIdRef.current && adjustedTime <= 25) {
+            if (adjustedTime > 10) {
+              speak(`전방 교차로 초록불, ${adjustedTime}초 남았습니다. 페이스를 유지하세요.`);
+            } else if (adjustedTime > 0) {
+              speak(`전방 교차로 초록불, ${adjustedTime}초 남았습니다. 서두르세요.`);
+            } else {
+              speak(`전방 교차로 빨간불입니다. 안전을 위해 대기하세요.`);
+            }
+            lastAnnouncedIdRef.current = closest.itstId;
+          }
           return;
         }
       }
@@ -254,11 +279,24 @@ export function TrackingPage() {
     <div className="min-h-screen bg-gray-50 text-slate-900 font-sans flex flex-col selection:bg-orange-500/30">
       {/* 헤더 */}
       <div className="absolute top-0 w-full z-50 p-4 flex items-center justify-between pointer-events-none">
-        <button onClick={() => navigate(-1)} className="pointer-events-auto bg-white/80 backdrop-blur-md p-3 rounded-full text-slate-900 hover:bg-gray-100 transition-colors border border-gray-200">
+        <button onClick={() => navigate(-1)} className="pointer-events-auto bg-white/90 backdrop-blur-md p-2.5 rounded-lg text-slate-900 hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm">
           <ArrowLeft className="size-5" />
         </button>
-        <div className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full pointer-events-auto border border-gray-200">
-          <span className="font-black text-orange-500 text-sm tracking-widest uppercase">Live Tracking</span>
+        
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button 
+            onClick={() => {
+              setIsVoiceEnabled(!isVoiceEnabled);
+              if (!isVoiceEnabled) speak("음성 가이드를 켭니다.");
+              else window.speechSynthesis.cancel();
+            }}
+            className="bg-white/90 backdrop-blur-md p-2.5 rounded-lg text-slate-900 hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm"
+          >
+            {isVoiceEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+          </button>
+          <div className="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-lg border border-gray-200 shadow-sm flex items-center justify-center">
+            <span className="font-black text-orange-500 text-[10px] tracking-widest uppercase leading-none mt-[2px]">Live Tracking</span>
+          </div>
         </div>
       </div>
 
@@ -284,21 +322,21 @@ export function TrackingPage() {
         )}
 
         {/* 지도 확대/축소 토글 버튼 */}
-        <button onClick={() => setIsMapExpanded(!isMapExpanded)} className="absolute bottom-24 right-4 bg-white/90 backdrop-blur-md border border-gray-200 p-3 rounded-2xl shadow-lg z-[1000] active:scale-[0.95] transition-all text-black">
+        <button onClick={() => setIsMapExpanded(!isMapExpanded)} className="absolute bottom-24 right-4 bg-white/90 backdrop-blur-md border border-gray-200 p-2.5 rounded-xl shadow-md z-[1000] active:scale-[0.95] transition-all text-black">
           {isMapExpanded ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
         </button>
 
         {/* 다음 교차로 신호 패널 */}
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 border border-gray-200 shadow-2xl">
+          <div className="bg-white/95 backdrop-blur-xl rounded-xl p-4 border border-gray-200 shadow-lg">
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs font-bold text-gray-500 tracking-wider">주변 교차로 (150m)</div>
               {nextSignal ? (
-                <div className={`text-sm font-black px-2 py-0.5 rounded-md ${nextSignal.time > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                <div className={`text-sm font-black px-2 py-1 rounded-md ${nextSignal.time > 0 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
                   {nextSignal.emoji} {nextSignal.status} ({nextSignal.time}초)
                 </div>
               ) : (
-                <div className="text-xs font-bold text-slate-500 bg-gray-100 px-2 py-1 rounded-md">탐색 중...</div>
+                <div className="text-xs font-bold text-slate-500 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">탐색 중...</div>
               )}
             </div>
             <div className="text-[11px] text-gray-600 font-medium mt-1 border-t border-gray-200 pt-2">
@@ -311,7 +349,7 @@ export function TrackingPage() {
       </div> 
 
       {/* 📊 하단 대시보드 영역 */}
-      <div className="flex-1 bg-white text-black rounded-t-[2rem] -mt-4 relative z-20 pt-6 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-gray-200">
+      <div className="flex-1 bg-white text-black rounded-t-2xl -mt-4 relative z-20 pt-6 px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] border-t border-gray-200">
         <div className="max-w-md mx-auto">
           
           {/* 3단 메인 스탯 */}
@@ -332,12 +370,12 @@ export function TrackingPage() {
 
           {/* 서브 스탯 카드 */}
           <div className="grid grid-cols-2 gap-3 mb-8">
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="text-[10px] font-bold text-slate-500 mb-1">신호 대기 횟수</div>
               <div className="text-xl font-black text-slate-900">0회</div>
               <div className="text-[10px] font-bold text-emerald-500 mt-1">✨ 무정지 순항 중!</div>
             </div>
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="text-[10px] font-bold text-slate-500 mb-1">목표 달성률</div>
               <div className="text-xl font-black text-slate-900">{routeInfo?.distance ? Math.min(100, Math.round((distance / routeInfo.distance) * 100)) : 0}%</div>
               <div className="text-[10px] font-bold text-slate-500 mt-1">총 {routeInfo?.distance || 0}km 코스</div>
@@ -347,16 +385,24 @@ export function TrackingPage() {
           {/* 컨트롤러 버튼 */}
           <div className="flex items-center justify-center gap-6">
             <button
-              onClick={() => setIsRunning(!isRunning)}
-              className={`rounded-[2rem] p-6 shadow-lg transition-all active:scale-[0.95] border-2 ${isRunning ? 'bg-white text-orange-500 border-gray-200 hover:bg-gray-50' : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-400'}`}
+              onClick={() => {
+                if (!isRunning) speak("러닝을 시작합니다. 다치지 않게 조심하세요.");
+                else speak("러닝을 일시 정지합니다.");
+                setIsRunning(!isRunning);
+              }}
+              className={`rounded-2xl p-5 shadow-md transition-all active:scale-[0.98] border-2 ${isRunning ? 'bg-white text-orange-500 border-gray-200 hover:bg-gray-50' : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-400'}`}
             >
               {isRunning ? <Pause className="size-8" fill="currentColor" /> : <Play className="size-8 ml-1" fill="currentColor" />}
             </button>
 
             {(isRunning || time > 0) && (
               <button
-                onClick={() => { setIsRunning(false); navigate("/complete"); }}
-                className="bg-black text-white border-2 border-black rounded-[2rem] p-6 shadow-md hover:bg-gray-800 transition-all active:scale-[0.95]"
+                onClick={() => { 
+                  speak("러닝을 종료합니다. 수고하셨습니다.");
+                  setIsRunning(false); 
+                  navigate("/complete"); 
+                }}
+                className="bg-slate-900 text-white border-2 border-slate-900 rounded-2xl p-5 shadow-md hover:bg-black transition-all active:scale-[0.98]"
               >
                 <Square className="size-8" fill="currentColor" />
               </button>
