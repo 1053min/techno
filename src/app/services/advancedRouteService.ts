@@ -220,7 +220,7 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'thumbsup
   const allIntersections = Object.values(INTERSECTION_LOCATIONS);
   const candidateZones = allIntersections
     .sort(() => 0.5 - Math.random())
-    .slice(0, 10)
+    .slice(0, 5) // 💡 서버 과부하(500 에러) 방지: 탐색 거점을 5곳으로 줄임
     .map(z => ({ name: z.itstNm + " 일대", lat: z.lat, lng: z.lng }));
 
   // 45도 간격 라디안 배열 (0, 45, 90, 135, 180, 225, 270, 315)
@@ -306,6 +306,9 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'thumbsup
         bestPath = res.fullPath;
       }
     }
+    
+    // 💡 Vercel API Timeout 및 TMAP Rate Limit 방지를 위한 0.4초 딜레이
+    await new Promise(resolve => setTimeout(resolve, 400));
   }
 
   // 50곳 모두 실패했을 경우 UI 튕김을 막기 위한 안전장치
