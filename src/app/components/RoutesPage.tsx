@@ -44,14 +44,14 @@ export function RoutesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-12 font-sans">
-      <div className="bg-white px-6 py-4 border-b border-neutral-200 flex items-center gap-4 sticky top-0 z-50">
-        <button onClick={() => navigate("/")} className="hover:bg-neutral-100 p-1 rounded-full transition-colors">
-          <ArrowLeft className="size-6 text-neutral-900" />
+    <div className="min-h-screen bg-slate-950 pb-12 font-sans text-slate-100 selection:bg-indigo-500/30">
+      <div className="bg-slate-950/80 backdrop-blur-md px-6 py-4 border-b border-slate-800 flex items-center gap-4 sticky top-0 z-50">
+        <button onClick={() => navigate("/")} className="hover:bg-slate-800 p-1 rounded-full transition-colors">
+          <ArrowLeft className="size-6 text-slate-100" />
         </button>
         <div>
-          <h1 className="text-lg font-black tracking-tight text-neutral-900">맞춤 경로 선택</h1>
-          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Route Setter</p>
+          <h1 className="text-lg font-black tracking-tight text-white">맞춤 경로 선택</h1>
+          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Route Setter</p>
         </div>
       </div>
 

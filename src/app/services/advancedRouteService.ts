@@ -192,6 +192,28 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
     }
   }
 
+  // 💡 50곳 모두 실패했을 경우 UI 튕김을 막고 임시 코스를 반환하는 안전장치
+  if (results.length === 0) {
+    console.warn("적합한 쾌적 경로를 찾지 못했습니다. 임시 다각형을 반환합니다.");
+    results.push({
+      id: 99,
+      name: "기본 순환 코스 (안전모드)",
+      conceptType: 'beta_comfort',
+      path: [
+        [currentLng, currentLat, 0], 
+        [currentLng + lngOffset, currentLat, 0], 
+        [currentLng + lngOffset, currentLat + latOffset, 0], 
+        [currentLng, currentLat + latOffset, 0], 
+        [currentLng, currentLat, 0]
+      ],
+      distance: distanceKm,
+      score: 50,
+      stairCount: 0,
+      steepCount: 0,
+      crosswalkCount: 0,
+    });
+  }
+
   // 점수(쾌적도) 순으로 정렬하여 반환
   return results.sort((a, b) => b.score - a.score).slice(0, 3);
 }

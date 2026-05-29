@@ -324,23 +324,23 @@ export function RouteMapPage() {
   }, [activeIntersections]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-50 relative">
+    <div className="flex flex-col h-screen w-full bg-slate-950 relative selection:bg-indigo-500/30 font-sans">
       {/* 💡 상단 헤더 (독립된 페이지로 구성, 탭 제거) */}
-      <div className="p-4 bg-white border-b flex items-center gap-3 z-10 shadow-sm">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
-          <ArrowLeft className="size-5" />
+      <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center gap-3 z-10 shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-slate-800 rounded-full transition-colors">
+          <ArrowLeft className="size-5 text-white" />
         </button>
-        <h2 className="font-black text-lg text-slate-800 mb-0">{routeInfo?.name || "로딩 중..."}</h2>
+        <h2 className="font-black text-lg text-white mb-0 tracking-tight">{routeInfo?.name || "로딩 중..."}</h2>
       </div>
 
       {/* TMAP 영역 */}
       <div className="flex-1 w-full relative z-0 overflow-hidden">
         
         {/* 🗺️ 지도 레이어 선택 UI */}
-        <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-100 p-1 flex flex-col gap-1">
-          <button onClick={() => setActiveLayer('general')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'general' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>일반 경로</button>
-          <button onClick={() => setActiveLayer('gradient')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'gradient' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>경사도 뷰</button>
-          <button onClick={() => setActiveLayer('stair')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'stair' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>계단 뷰</button>
+        <div className="absolute top-4 right-4 z-[1000] bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 p-1 flex flex-col gap-1">
+          <button onClick={() => setActiveLayer('general')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'general' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>일반 경로</button>
+          <button onClick={() => setActiveLayer('gradient')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'gradient' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>경사도 뷰</button>
+          <button onClick={() => setActiveLayer('stair')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'stair' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>계단 뷰</button>
         </div>
 
         <div id={mapContainerId} className="w-full h-full" />
@@ -372,32 +372,32 @@ export function RouteMapPage() {
 
       {/* 📊 하단 패널: 통계 및 러닝 시작 버튼 (기존 로직 및 레이아웃 유지 + 디자인 업그레이드) */}
       <div className="absolute bottom-6 left-4 right-4 z-[1000] flex flex-col gap-3">
-        <div className="bg-white/95 backdrop-blur-md py-4 px-3 rounded-2xl shadow-xl border border-slate-100 flex justify-between items-center">
+        <div className="bg-slate-900/95 backdrop-blur-md py-4 px-3 rounded-2xl shadow-lg border border-slate-800 flex justify-between items-center">
           <div className="text-center">
-            <p className="text-[11px] text-slate-500 font-medium mb-0.5">총 길이</p>
-            <p className="font-black text-lg text-indigo-600">{stats.length}km</p>
+            <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">거리</p>
+            <p className="font-black text-lg text-white">{stats.length}km</p>
           </div>
-          <div className="h-6 w-px bg-slate-200"></div>
+          <div className="h-6 w-px bg-slate-700"></div>
           <div className="text-center">
-            <p className="text-[11px] text-slate-500 font-medium mb-0.5">지형 특성</p>
+            <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">지형</p>
             <div className="flex gap-2 justify-center items-center">
-              <span className={`text-xs font-black ${stats.stairCount > 0 ? 'text-rose-500' : 'text-slate-400'}`}>계단 {stats.stairCount}</span>
-              <span className={`text-xs font-black ${stats.steepCount > 0 ? 'text-purple-600' : 'text-slate-400'}`}>경사 {stats.steepCount}</span>
+              <span className={`text-xs font-black ${stats.stairCount > 0 ? 'text-rose-400' : 'text-slate-500'}`}>계단 {stats.stairCount}</span>
+              <span className={`text-xs font-black ${stats.steepCount > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>언덕 {stats.steepCount}</span>
             </div>
           </div>
-          <div className="h-6 w-px bg-slate-200"></div>
+          <div className="h-6 w-px bg-slate-700"></div>
           <div className="text-center">
             {routeInfo?.conceptType?.startsWith('beta') ? (
               <>
-                <p className="text-[11px] text-slate-500 font-medium mb-0.5">첫 신호 대기</p>
-                <p className={`font-black text-lg ${firstSignalTime && firstSignalTime > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">첫 신호</p>
+                <p className={`font-black text-lg ${firstSignalTime && firstSignalTime > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                   {firstSignalTime !== null ? (firstSignalTime === 0 ? '통과 가능' : `${firstSignalTime}초`) : '탐색중'}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-[11px] text-slate-500 font-medium mb-0.5">무정지율</p>
-                <p className="font-black text-lg text-indigo-600">{stats.successRate}%</p>
+                <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">무정지율</p>
+                <p className="font-black text-lg text-emerald-400">{stats.successRate}%</p>
               </>
             )}
           </div>
@@ -405,10 +405,10 @@ export function RouteMapPage() {
 
         <button
           onClick={() => navigate("/tracking", { state: { routeInfo } })}
-          className="w-full bg-indigo-600 text-white font-black text-lg py-4 rounded-2xl shadow-xl hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+          className="w-full bg-indigo-600 text-white font-black tracking-widest text-lg py-4 rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
-          <Play className="size-5 fill-white" />
-          러닝 시작하기
+          <Play className="size-5 fill-current" />
+          START RUNNING
         </button>
       </div>
     </div>
