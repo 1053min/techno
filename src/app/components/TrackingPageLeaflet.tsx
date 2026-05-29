@@ -2,18 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Pause, Play, Square, ArrowLeft } from "lucide-react";
-import { useNavigate,useLocation } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { updateAllSignals, getSignalFromCache, getSignalEmoji } from "../services/trafficSignalService";
 import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
 
 interface PathPoint {
-
   lat: number;
-
   lng: number;
-
   timestamp: number;
-
 }
 
 declare global {
