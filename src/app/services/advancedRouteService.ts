@@ -83,7 +83,7 @@ function removeSpikes(path: Array<any>) {
 }
 
 // 1. 내 주변 맞춤 쾌적 경로 생성 알고리즘
-export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number, stairOption: 'avoid' | 'allow_some' | 'ignore' = 'avoid') {
+export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number, stairOption: 'avoid' | 'allow_some' | 'ignore' = 'avoid', gradientOption: 'flat' | 'allow_some' | 'ignore' = 'flat') {
   console.log(`[Algorithm 1] ${distanceKm}km 쾌적 경로 탐색 시작. 기준점: ${currentLat}, ${currentLng}`);
   
   // 대략적인 반경 (둘레가 distanceKm가 되기 위한 사각형 한 변의 길이)
@@ -157,12 +157,18 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
         // 거리 오차 패널티 완화
         score -= Math.abs(distanceKm - actualDist) * 5;
 
-        // 💡 유저의 계단 회피 옵션에 따른 추가 패널티 적용
+        // 💡 유저의 계단 및 경사도 회피 옵션에 따른 추가 패널티 적용
         let isValid = true;
         if (stairOption === 'avoid' && stairCount > 0) {
           isValid = false; // 계단이 있으면 아예 후보에서 배제
         } else if (stairOption === 'allow_some') {
           score -= stairCount * 2; // 감점 완화
+        }
+
+        if (gradientOption === 'flat' && steepCount > 0) {
+          isValid = false; // 평지만 원할 때 경사가 있으면 배제
+        } else if (gradientOption === 'allow_some') {
+          score -= steepCount * 2;
         }
         
         // 스파이크 제거 후 최종 경로 삽입
