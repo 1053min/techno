@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router";
 import { HomePage } from "./components/HomePage";
 import { RoutesPage } from "./components/RoutesPage";
-import { TrackingPageLeaflet } from "./components/TrackingPageLeaflet";
+import { TrackingPage } from "./components/TrackingPage";
 import { CompletePage } from "./components/CompletePage";
 import { HistoryPage } from "./components/HistoryPage";
 import { MapPageTmap } from "./components/MapPageLeaflet";
@@ -17,7 +17,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/routes" element={<RoutesPage />} />
         <Route path="/route-map" element={<RouteMapPage />} />
-        <Route path="/tracking" element={<TrackingPageLeaflet />} />
+        <Route path="/tracking" element={<TrackingPage />} />
         <Route path="/complete" element={<CompletePage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/map" element={<MapPageTmap />} />
