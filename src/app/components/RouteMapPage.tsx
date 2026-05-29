@@ -31,8 +31,9 @@ export function RouteMapPage() {
   const tmapRef = useRef<any>(null);
   
   const [routeInfo, setRouteInfo] = useState<any>(null);
-  const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100 });
+  const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100, stairCount: 0 });
   const [activeIntersections, setActiveIntersections] = useState<any[]>([]);
+  const targetPacePerKm = 6.0; // km당 6분 (360초) 타겟 페이스 시뮬레이션
 
   const markersRef = useRef<any[]>([]);
 
@@ -104,12 +105,32 @@ export function RouteMapPage() {
       });
     }, 1200);
 
+    const isBeta = routeInfo.conceptType?.startsWith('beta');
+
     // 시작점 마커
+    let startIconHTML = `<div style="width: 18px; height: 18px; background: #421c01; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`;
+    if (isBeta) {
+      startIconHTML = `<div style="width: 22px; height: 22px; background: #4F46E5; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); transform: translate(-50%, -50%); display: flex; align-items: center; justify-center; font-size:10px; color:white; font-weight:bold; padding-left:3px;">S</div>`;
+    }
+
     const startMarker = new window.Tmapv3.Marker({
       position: new window.Tmapv3.LatLng(startLat, startLng),
-      iconHTML: `<div style="width: 18px; height: 18px; background: #421c01; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: translate(-50%, -50%);"></div>`,
+      iconHTML: startIconHTML,
+      zIndex: 100,
     });
     startMarker.setMap(map);
+
+    if (isBeta) {
+      // 도착점 마커 (베타에서만 노출)
+      const endLat = Number(routeInfo.path[routeInfo.path.length - 1][1]);
+      const endLng = Number(routeInfo.path[routeInfo.path.length - 1][0]);
+      const endMarker = new window.Tmapv3.Marker({
+        position: new window.Tmapv3.LatLng(endLat, endLng),
+        iconHTML: `<div style="width: 22px; height: 22px; background: #E11D48; border: 3px solid white; border-radius: 20%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); transform: translate(-50%, -50%); display: flex; align-items: center; justify-center; font-size:10px; color:white; font-weight:bold; padding-left:3px;">E</div>`,
+        zIndex: 99,
+      });
+      endMarker.setMap(map);
+    }
 
     // 💡 경로 주변(30m 반경) 교차로 필터링 로직 복구
     const filteredIntersections = Object.values(INTERSECTION_LOCATIONS).filter(intersection => 
@@ -125,7 +146,8 @@ export function RouteMapPage() {
     setStats({ 
       length: Number(totalLen.toFixed(2)), 
       intersectionCount: filteredIntersections.length, 
-      successRate: 100 // 추후 백엔드 연동 시 확률 계산
+      successRate: 100, // 추후 백엔드 연동 시 확률 계산
+      stairCount: routeInfo.stairCount || 0
     });
 
     // React Strict Mode 마운트/언마운트 사이클 대응 (컨테이너 클린업)
@@ -155,7 +177,11 @@ export function RouteMapPage() {
       markersRef.current.forEach((marker) => marker.setMap(null));
       const newMarkers: any[] = [];
 
+      const startLat = Number(routeInfo.path[0][1]);
+      const startLng = Number(routeInfo.path[0][0]);
+
       activeIntersections.forEach((intersection) => {
+        const isBeta = routeInfo?.conceptType?.startsWith('beta');
         const signal = getSignalFromCache(intersection.itstId);
         const isAvailable = !!signal;
         let htmlContent = '';
@@ -187,12 +213,46 @@ export function RouteMapPage() {
           const adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
           const emoji = getSignalEmoji(adjustedTime);
 
-          htmlContent = `
-            <div style="background: white; border: 2px solid #4f46e5; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 12px; transform: translate(-50%, -100%); white-space: nowrap;">
-              <span>${activeDir.emoji} ${emoji}</span>
-              <span style="color: #374151;">${adjustedTime}초</span>
-            </div>
-          `;
+          if (isBeta) {
+            // 💡 베타: 러닝 페이스 기반 신호 예측 (ETA 산출 로직)
+            const distToIntersection = getDistanceKm(startLat, startLng, intersection.lat, intersection.lng);
+            const etaSeconds = distToIntersection * targetPacePerKm * 60; // 도착 예상 시간(초)
+            
+            let paceGuide = "";
+            let guideColor = "";
+            const timeDiff = adjustedTime - etaSeconds; 
+            
+            if (timeDiff > 5) {
+              paceGuide = "🏃 속도 유지";
+              guideColor = "#10B981"; // Emerald
+            } else if (timeDiff > -10 && timeDiff <= 5) {
+              paceGuide = "🔥 스퍼트!";
+              guideColor = "#F59E0B"; // Amber
+            } else {
+              paceGuide = "🐢 페이스 늦추기";
+              guideColor = "#EF4444"; // Rose
+            }
+
+            htmlContent = `
+              <div style="background: white; border: 2px solid ${guideColor}; border-radius: 12px; padding: 4px 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translate(-50%, -100%); white-space: nowrap;">
+                <div style="display: flex; gap: 4px; font-weight: 900; font-size: 12px;">
+                  <span>${activeDir.emoji} ${emoji}</span>
+                  <span style="color: #374151;">${adjustedTime}초</span>
+                </div>
+                <div style="font-size: 9px; font-weight: 800; color: ${guideColor}; background: ${guideColor}15; padding: 2px 6px; border-radius: 6px;">
+                  ${paceGuide}
+                </div>
+              </div>
+            `;
+          } else {
+            // 일반: 기본 신호 타이머
+            htmlContent = `
+              <div style="background: white; border: 2px solid #4f46e5; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 12px; transform: translate(-50%, -100%); white-space: nowrap;">
+                <span>${activeDir.emoji} ${emoji}</span>
+                <span style="color: #374151;">${adjustedTime}초</span>
+              </div>
+            `;
+          }
         } else {
           // 데이터가 없을 때 (대기중)
           htmlContent = `
@@ -261,20 +321,29 @@ export function RouteMapPage() {
 
       {/* 📊 하단 패널: 통계 및 러닝 시작 버튼 (기존 로직 및 레이아웃 유지 + 디자인 업그레이드) */}
       <div className="absolute bottom-6 left-4 right-4 z-[1000] flex flex-col gap-3">
-        <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 flex justify-between items-center px-6">
+        <div className="bg-white/95 backdrop-blur-md py-4 px-3 rounded-2xl shadow-xl border border-slate-100 flex justify-between items-center">
           <div className="text-center">
             <p className="text-[11px] text-slate-500 font-medium mb-0.5">총 길이</p>
             <p className="font-black text-lg text-slate-800">{stats.length}km</p>
           </div>
-          <div className="h-8 w-px bg-slate-200"></div>
+          <div className="h-6 w-px bg-slate-200"></div>
           <div className="text-center">
             <p className="text-[11px] text-slate-500 font-medium mb-0.5">거치는 교차로</p>
             <p className="font-black text-lg text-slate-800">{stats.intersectionCount}곳</p>
           </div>
-          <div className="h-8 w-px bg-slate-200"></div>
+          <div className="h-6 w-px bg-slate-200"></div>
           <div className="text-center">
-            <p className="text-[11px] text-slate-500 font-medium mb-0.5">무정지율</p>
-            <p className="font-black text-lg text-indigo-600">{stats.successRate}%</p>
+            {routeInfo?.conceptType?.startsWith('beta') ? (
+              <>
+                <p className="text-[11px] text-slate-500 font-medium mb-0.5">경사도/계단</p>
+                <p className={`font-black text-lg ${stats.stairCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{stats.stairCount > 0 ? stats.stairCount + '곳 주의' : '매우 평탄'}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] text-slate-500 font-medium mb-0.5">무정지율</p>
+                <p className="font-black text-lg text-indigo-600">{stats.successRate}%</p>
+              </>
+            )}
           </div>
         </div>
 
