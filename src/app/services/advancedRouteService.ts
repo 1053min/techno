@@ -141,31 +141,34 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
           // 횡단보도(CP) 포인트 카운트
           if (f.geometry.type === 'Point' && f.properties?.pointType === 'CP') {
             crosswalkCount++;
-            score -= 3; // 횡단보도 패널티
+            score -= 1; // 횡단보도 패널티 완화
           }
         });
 
         actualDist = Number((data.features[0]?.properties?.totalDistance / 1000).toFixed(2)) || distanceKm;
-        // 거리 오차 패널티
-        score -= Math.abs(distanceKm - actualDist) * 10;
+        // 거리 오차 패널티 완화
+        score -= Math.abs(distanceKm - actualDist) * 5;
 
         // 💡 유저의 계단 회피 옵션에 따른 추가 패널티 적용
+        let isValid = true;
         if (stairOption === 'avoid' && stairCount > 0) {
-          score -= 1000; // 계단/경사가 하나라도 있으면 철저히 배제
+          isValid = false; // 계단이 있으면 아예 후보에서 배제
         } else if (stairOption === 'allow_some') {
-          score -= stairCount * 5; // 약간의 감점만 부여
-        } // ignore일 경우 패널티 없음
-
-        results.push({
-          id: cand.id,
-          name: cand.name,
-          conceptType: 'beta_comfort',
-          path: fullPath,
-          distance: actualDist,
-          score: Math.max(0, score),
-          stairCount,
-          crosswalkCount,
-        });
+          score -= stairCount * 2; // 감점 완화
+        }
+        
+        if (isValid && fullPath.length > 0) {
+          results.push({
+            id: cand.id,
+            name: cand.name,
+            conceptType: 'beta_comfort',
+            path: fullPath,
+            distance: actualDist,
+            score: Math.max(80, Math.min(100, Math.round(score))), // 최소 80점 보장 및 100점 만점
+            stairCount,
+            crosswalkCount,
+          });
+        }
       }
     } catch (e) {
       console.warn("후보군 API 호출 에러", e);

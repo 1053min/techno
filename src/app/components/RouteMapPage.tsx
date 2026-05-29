@@ -33,6 +33,7 @@ export function RouteMapPage() {
   const [routeInfo, setRouteInfo] = useState<any>(null);
   const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100, stairCount: 0 });
   const [activeIntersections, setActiveIntersections] = useState<any[]>([]);
+  const [firstSignalTime, setFirstSignalTime] = useState<number | null>(null);
   const targetPacePerKm = 6.0; // km당 6분 (360초) 타겟 페이스 시뮬레이션
 
   const markersRef = useRef<any[]>([]);
@@ -69,41 +70,57 @@ export function RouteMapPage() {
     });
     tmapRef.current = map;
 
-    // TMAP용 경로 좌표 배열 생성 (유효성 검사 및 연속된 중복 좌표 필터링)
-    const tmapPaths: any[] = [];
-    let prevLat: number | null = null;
-    let prevLng: number | null = null;
-    
-    routeInfo.path.forEach((c: any) => {
-      const lng = Number(c[0]);
-      const lat = Number(c[1]);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        // 💡 화살표 개수를 줄이기 위해 아주 가까운 간격(약 15m 이내)의 좌표는 필터링하여 선을 부드럽게 유지
-        if (!prevLat || !prevLng || getDistanceKm(prevLat, prevLng, lat, lng) > 0.015) {
-          tmapPaths.push(new window.Tmapv3.LatLng(lat, lng));
-          prevLat = lat;
-          prevLng = lng;
-        }
-      }
-    });
-    
-    // 💡 디버깅용: F12 콘솔에서 변환된 좌표가 몇 개인지 확인할 수 있도록 출력
-    console.log(`[TMAP 렌더링] 준비 완료: 총 ${tmapPaths.length}개의 좌표로 선을 그립니다.`);
-
     // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
-    // 🌸 강남 벚꽃길 코스처럼 타일 로딩이 무거운 경우 No style loaded 에러를 막기 위해 1.2초 대기
+    // 🌸 No style loaded 에러를 막기 위해 TMAP 내부 이벤트 대기 시간을 1.5초로 여유롭게 설정
     setTimeout(() => {
-      if (!tmapRef.current) return; // 그 사이 사용자가 뒤로가기를 눌렀다면 취소
-      new window.Tmapv3.Polyline({
-        path: tmapPaths,
-        strokeColor: "#4F46E5", // 앱 테마에 어울리는 예쁜 인디고 색상
-        strokeWeight: 6,
-        strokeOpacity: 1,
-        strokeStyle: "solid",
-        direction: true, // 💡 러닝 진행 방향 화살표 추가
-        map: tmapRef.current, 
-      });
-    }, 1200);
+      try {
+        if (!tmapRef.current) return;
+        
+        // 💡 경사도(Grade) 배열을 분할하여 멀티 컬러 그라데이션 라인 렌더링
+        const pathSegments: any[] = [];
+        let currentSegment: any = { path: [], color: "" };
+        
+        const getColorByGrade = (grade: number) => {
+           if (grade === 2) return "#E11D48"; // Rose (계단/가파름)
+           if (grade === 1) return "#F59E0B"; // Amber (단차/얕은 경사)
+           return "#4F46E5"; // Indigo (평탄)
+        };
+
+        routeInfo.path.forEach((c: any, index: number) => {
+          const grade = c[2] || 0; // advancedRouteService에서 주입한 등급 정보
+          const color = getColorByGrade(grade);
+          const latLng = new window.Tmapv3.LatLng(c[1], c[0]);
+
+          if (index === 0) {
+            currentSegment.color = color;
+            currentSegment.path.push(latLng);
+          } else {
+            if (currentSegment.color !== color) {
+              currentSegment.path.push(latLng); // 구간이 끊어지지 않도록 끝점 연결
+              pathSegments.push(currentSegment);
+              currentSegment = { path: [latLng], color };
+            } else {
+              currentSegment.path.push(latLng);
+            }
+          }
+        });
+        if (currentSegment.path.length > 0) pathSegments.push(currentSegment);
+
+        pathSegments.forEach((seg) => {
+          new window.Tmapv3.Polyline({
+            path: seg.path,
+            strokeColor: seg.color,
+            strokeWeight: 8,
+            strokeOpacity: 0.9,
+            strokeStyle: "solid",
+            direction: true,
+            map: tmapRef.current,
+          });
+        });
+      } catch (e) {
+        console.warn("TMAP Polyline 렌더링 에러 무시:", e);
+      }
+    }, 1500);
 
     const isBeta = routeInfo.conceptType?.startsWith('beta');
 
@@ -180,6 +197,9 @@ export function RouteMapPage() {
       const startLat = Number(routeInfo.path[0][1]);
       const startLng = Number(routeInfo.path[0][0]);
 
+      let closestDist = Infinity;
+      let firstFoundSignalTime: number | null = null;
+
       activeIntersections.forEach((intersection) => {
         const isBeta = routeInfo?.conceptType?.startsWith('beta');
         const signal = getSignalFromCache(intersection.itstId);
@@ -213,9 +233,15 @@ export function RouteMapPage() {
           const adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
           const emoji = getSignalEmoji(adjustedTime);
 
+          // 첫 신호 대기시간 추출을 위해 시작점과 가장 가까운 교차로 판별
+          const distToIntersection = getDistanceKm(startLat, startLng, intersection.lat, intersection.lng);
+          if (distToIntersection < closestDist) {
+            closestDist = distToIntersection;
+            firstFoundSignalTime = adjustedTime;
+          }
+
           if (isBeta) {
             // 💡 베타: 러닝 페이스 기반 신호 예측 (ETA 산출 로직)
-            const distToIntersection = getDistanceKm(startLat, startLng, intersection.lat, intersection.lng);
             const etaSeconds = distToIntersection * targetPacePerKm * 60; // 도착 예상 시간(초)
             
             let paceGuide = "";
@@ -273,6 +299,7 @@ export function RouteMapPage() {
       });
 
       markersRef.current = newMarkers;
+      setFirstSignalTime(firstFoundSignalTime);
     };
 
     updateSignals();
@@ -324,19 +351,21 @@ export function RouteMapPage() {
         <div className="bg-white/95 backdrop-blur-md py-4 px-3 rounded-2xl shadow-xl border border-slate-100 flex justify-between items-center">
           <div className="text-center">
             <p className="text-[11px] text-slate-500 font-medium mb-0.5">총 길이</p>
-            <p className="font-black text-lg text-slate-800">{stats.length}km</p>
+            <p className="font-black text-lg text-indigo-600">{stats.length}km</p>
           </div>
           <div className="h-6 w-px bg-slate-200"></div>
           <div className="text-center">
-            <p className="text-[11px] text-slate-500 font-medium mb-0.5">거치는 교차로</p>
-            <p className="font-black text-lg text-slate-800">{stats.intersectionCount}곳</p>
+            <p className="text-[11px] text-slate-500 font-medium mb-0.5">경사도/계단</p>
+            <p className={`font-black text-lg ${stats.stairCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{stats.stairCount > 0 ? stats.stairCount + '곳 주의' : '평탄함'}</p>
           </div>
           <div className="h-6 w-px bg-slate-200"></div>
           <div className="text-center">
             {routeInfo?.conceptType?.startsWith('beta') ? (
               <>
-                <p className="text-[11px] text-slate-500 font-medium mb-0.5">경사도/계단</p>
-                <p className={`font-black text-lg ${stats.stairCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{stats.stairCount > 0 ? stats.stairCount + '곳 주의' : '매우 평탄'}</p>
+                <p className="text-[11px] text-slate-500 font-medium mb-0.5">첫 신호 대기</p>
+                <p className={`font-black text-lg ${firstSignalTime && firstSignalTime > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                  {firstSignalTime !== null ? (firstSignalTime === 0 ? '통과 가능' : `${firstSignalTime}초`) : '탐색중'}
+                </p>
               </>
             ) : (
               <>
