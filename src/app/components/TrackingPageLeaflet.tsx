@@ -1,13 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-
-import { Pause, Play, Square, Maximize2, Minimize2 } from "lucide-react";
-
+import { Pause, Play, Square, ArrowLeft } from "lucide-react";
 import { useNavigate,useLocation } from "react-router";
-
-import { SEOUL_INTERSECTIONS, getSignalEmoji, getSignalFromCache } from "../services/trafficSignalService";
-
+import { updateAllSignals, getSignalFromCache, getSignalEmoji } from "../services/trafficSignalService";
 import { INTERSECTION_LOCATIONS } from "../services/intersectionData";
 
 interface PathPoint {
