@@ -8,6 +8,7 @@ export function BetaRoutePage() {
   const [loading, setLoading] = useState(false);
   const [distance, setDistance] = useState<number>(3);
   const [comfortCandidates, setComfortCandidates] = useState<any[]>([]);
+  const [stairOption, setStairOption] = useState<'avoid' | 'allow_some' | 'ignore'>('avoid');
 
   // 1. 쾌적 경로 생성 테스트 핸들러
   const handleTestComfortRoute = async () => {
@@ -24,7 +25,7 @@ export function BetaRoutePage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        const results = await generateComfortRoute(distance, latitude, longitude);
+        const results = await generateComfortRoute(distance, latitude, longitude, stairOption);
         setComfortCandidates(results);
         setLoading(false);
       },
@@ -91,8 +92,15 @@ export function BetaRoutePage() {
                   type="range" min="1" max="10" step="0.5" 
                   value={distance} 
                   onChange={(e) => setDistance(parseFloat(e.target.value))}
-                  className="w-full accent-emerald-500"
+                  className="w-full accent-emerald-500 mb-4"
                 />
+                
+                <label className="text-xs font-bold text-slate-500 mb-2 block">계단/단차 회피 옵션</label>
+                <div className="flex gap-2">
+                  <button onClick={() => setStairOption('avoid')} className={`flex-1 py-2 text-xs rounded-xl border font-bold transition-colors ${stairOption === 'avoid' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>무조건 우회</button>
+                  <button onClick={() => setStairOption('allow_some')} className={`flex-1 py-2 text-xs rounded-xl border font-bold transition-colors ${stairOption === 'allow_some' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>일부 허용</button>
+                  <button onClick={() => setStairOption('ignore')} className={`flex-1 py-2 text-xs rounded-xl border font-bold transition-colors ${stairOption === 'ignore' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>상관 없음</button>
+                </div>
               </div>
 
               {!comfortCandidates.length ? (

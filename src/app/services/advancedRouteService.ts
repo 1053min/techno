@@ -16,7 +16,7 @@ function getDistKm(lat1: number, lng1: number, lat2: number, lng2: number) {
 }
 
 // 💡 Bounding Box를 활용하여 TMAP 경로와 템플릿의 '형태 유사도'를 MSE(평균제곱오차)로 계산하는 핵심 함수
-function calculateShapeError(fullPath: Array<[number, number]>, template: Array<[number, number]>) {
+function calculateShapeError(fullPath: Array<any>, template: Array<[number, number]>) {
   if (!fullPath || fullPath.length === 0) return Infinity;
 
   let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
@@ -30,7 +30,7 @@ function calculateShapeError(fullPath: Array<[number, number]>, template: Array<
   const heightLat = maxLat - minLat || 1;
 
   // fullPath를 템플릿 점 개수(numPoints)만큼 정규화 및 샘플링 추출
-  const sampledPath: Array<[number, number]> = [];
+  const sampledPath: Array<any> = [];
   const numPoints = template.length;
   for (let i = 0; i < numPoints; i++) {
     const idx = Math.floor((i / (numPoints - 1)) * (fullPath.length - 1));
@@ -61,8 +61,26 @@ function calculateShapeError(fullPath: Array<[number, number]>, template: Array<
   return mse / numPoints;
 }
 
+// 💡 삐죽 튀어나온 경로(Spike/Backtracking)를 제거하여 선형을 매끄럽게 만드는 필터
+function removeSpikes(path: Array<any>) {
+  const smoothed: Array<any> = [];
+  for (let i = 0; i < path.length; i++) {
+    if (smoothed.length >= 2) {
+      const p1 = smoothed[smoothed.length - 2]; 
+      const p3 = path[i]; 
+      const dist = Math.sqrt(Math.pow(p1[0] - p3[0], 2) + Math.pow(p1[1] - p3[1], 2));
+      if (dist < 0.00025) { 
+        smoothed.pop(); 
+        continue;
+      }
+    }
+    smoothed.push(path[i]);
+  }
+  return smoothed;
+}
+
 // 1. 내 주변 맞춤 쾌적 경로 생성 알고리즘
-export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number) {
+export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number, stairOption: 'avoid' | 'allow_some' | 'ignore' = 'avoid') {
   console.log(`[Algorithm 1] ${distanceKm}km 쾌적 경로 탐색 시작. 기준점: ${currentLat}, ${currentLng}`);
   
   // 대략적인 반경 (둘레가 distanceKm가 되기 위한 사각형 한 변의 길이)
@@ -103,16 +121,22 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
         let stairCount = 0;
         let crosswalkCount = 0;
         let actualDist = 0;
-        const fullPath: Array<[number, number]> = [];
+        const fullPath: Array<any> = [];
 
         data.features.forEach((f: any) => {
-          // 인도 선형 좌표 추출
+          // 💡 인도 선형 좌표 추출 및 경사도/단차 등급(Grade) 주입
           if (f.geometry.type === 'LineString') {
-            fullPath.push(...f.geometry.coordinates);
+            let grade = 0; // 0: 평지, 1: 약한 단차, 2: 가파른 계단
             if (f.properties?.facilityType === '14' || f.properties?.facilityType === '15') {
               stairCount++;
-              score -= 15; // 계단, 가파른 경사 패널티
+              grade = 2; 
+            } else if (f.properties?.facilityType === '16' || f.properties?.facilityType === '17') {
+              grade = 1; 
             }
+            
+            f.geometry.coordinates.forEach((coord: any) => {
+              fullPath.push([coord[0], coord[1], grade]); // [lng, lat, grade] 형태로 맵핑
+            });
           }
           // 횡단보도(CP) 포인트 카운트
           if (f.geometry.type === 'Point' && f.properties?.pointType === 'CP') {
@@ -124,6 +148,13 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
         actualDist = Number((data.features[0]?.properties?.totalDistance / 1000).toFixed(2)) || distanceKm;
         // 거리 오차 패널티
         score -= Math.abs(distanceKm - actualDist) * 10;
+
+        // 💡 유저의 계단 회피 옵션에 따른 추가 패널티 적용
+        if (stairOption === 'avoid' && stairCount > 0) {
+          score -= 1000; // 계단/경사가 하나라도 있으면 철저히 배제
+        } else if (stairOption === 'allow_some') {
+          score -= stairCount * 5; // 약간의 감점만 부여
+        } // ignore일 경우 패널티 없음
 
         results.push({
           id: cand.id,
@@ -149,11 +180,11 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
       name: "기본 순환 코스 (안전모드)",
       conceptType: 'beta_comfort',
       path: [
-        [currentLng, currentLat], 
-        [currentLng + lngOffset, currentLat], 
-        [currentLng + lngOffset, currentLat + latOffset], 
-        [currentLng, currentLat + latOffset], 
-        [currentLng, currentLat]
+        [currentLng, currentLat, 0], 
+        [currentLng + lngOffset, currentLat, 0], 
+        [currentLng + lngOffset, currentLat + latOffset, 0], 
+        [currentLng, currentLat + latOffset, 0], 
+        [currentLng, currentLat, 0]
       ],
       distance: distanceKm,
       score: 50,
