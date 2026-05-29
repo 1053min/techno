@@ -142,7 +142,7 @@ export function RouteMapPage() {
         let currentSegment: any = { path: [], color: "" };
         
         const getColorByLayer = (grade: number) => {
-           if (activeLayer === 'general') return "#4F46E5"; // 기본: 전부 파란색
+           if (activeLayer === 'general') return "#f97316"; // 기본: 전부 오렌지색
            if (activeLayer === 'gradient') {
              if (grade === 3) return "#7E22CE"; // 보라 (가파름)
              if (grade === 1) return "#EF4444"; // 빨강 (얕은 경사)
@@ -152,7 +152,7 @@ export function RouteMapPage() {
              if (grade === 2) return "#E11D48"; // 빨강 (계단)
              return "#CBD5E1"; // 밝은 회색 (평탄/경사무시)
            }
-           return "#4F46E5";
+           return "#f97316";
         };
 
         routeInfo.path.forEach((c: any, index: number) => {
@@ -289,7 +289,7 @@ export function RouteMapPage() {
           } else {
             // 일반: 기본 신호 타이머
             htmlContent = `
-              <div style="background: white; border: 2px solid #4f46e5; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 12px; transform: translate(-50%, -100%); white-space: nowrap;">
+              <div style="background: white; border: 2px solid #000; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 12px; transform: translate(-50%, -100%); white-space: nowrap;">
                 <span>${activeDir.emoji} ${emoji}</span>
                 <span style="color: #374151;">${adjustedTime}초</span>
               </div>
@@ -324,23 +324,23 @@ export function RouteMapPage() {
   }, [activeIntersections]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-950 relative selection:bg-indigo-500/30 font-sans">
+    <div className="flex flex-col h-screen w-full bg-gray-50 relative selection:bg-orange-500/30 font-sans">
       {/* 💡 상단 헤더 (독립된 페이지로 구성, 탭 제거) */}
-      <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center gap-3 z-10 shadow-sm">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-slate-800 rounded-full transition-colors">
-          <ArrowLeft className="size-5 text-white" />
+      <div className="p-4 bg-white border-b border-gray-200 flex items-center gap-3 z-10 shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors">
+          <ArrowLeft className="size-5 text-black" />
         </button>
-        <h2 className="font-black text-lg text-white mb-0 tracking-tight">{routeInfo?.name || "로딩 중..."}</h2>
+        <h2 className="font-black text-lg text-black mb-0 tracking-tight">{routeInfo?.name || "로딩 중..."}</h2>
       </div>
 
       {/* TMAP 영역 */}
       <div className="flex-1 w-full relative z-0 overflow-hidden">
         
         {/* 🗺️ 지도 레이어 선택 UI */}
-        <div className="absolute top-4 right-4 z-[1000] bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 p-1 flex flex-col gap-1">
-          <button onClick={() => setActiveLayer('general')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'general' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>일반 경로</button>
-          <button onClick={() => setActiveLayer('gradient')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'gradient' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>경사도 뷰</button>
-          <button onClick={() => setActiveLayer('stair')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'stair' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>계단 뷰</button>
+        <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200 p-1 flex flex-col gap-1">
+          <button onClick={() => setActiveLayer('general')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'general' ? 'bg-black text-white' : 'text-slate-500 hover:bg-gray-100'}`}>일반 경로</button>
+          <button onClick={() => setActiveLayer('gradient')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'gradient' ? 'bg-purple-600 text-white' : 'text-slate-500 hover:bg-gray-100'}`}>경사도 뷰</button>
+          <button onClick={() => setActiveLayer('stair')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'stair' ? 'bg-rose-600 text-white' : 'text-slate-500 hover:bg-gray-100'}`}>계단 뷰</button>
         </div>
 
         <div id={mapContainerId} className="w-full h-full" />
@@ -372,31 +372,31 @@ export function RouteMapPage() {
 
       {/* 📊 하단 패널: 통계 및 러닝 시작 버튼 (기존 로직 및 레이아웃 유지 + 디자인 업그레이드) */}
       <div className="absolute bottom-6 left-4 right-4 z-[1000] flex flex-col gap-3">
-        <div className="bg-slate-900/95 backdrop-blur-md py-4 px-3 rounded-2xl shadow-lg border border-slate-800 flex justify-between items-center">
+        <div className="bg-white/95 backdrop-blur-md py-4 px-3 rounded-2xl shadow-xl border border-gray-200 flex justify-between items-center">
           <div className="text-center">
-            <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">거리</p>
-            <p className="font-black text-lg text-white">{stats.length}km</p>
+            <p className="text-[11px] text-gray-500 font-bold mb-0.5 uppercase tracking-wide">거리</p>
+            <p className="font-black text-lg text-black">{stats.length}km</p>
           </div>
-          <div className="h-6 w-px bg-slate-700"></div>
+          <div className="h-6 w-px bg-gray-200"></div>
           <div className="text-center">
-            <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">지형</p>
+            <p className="text-[11px] text-gray-500 font-bold mb-0.5 uppercase tracking-wide">지형</p>
             <div className="flex gap-2 justify-center items-center">
               <span className={`text-xs font-black ${stats.stairCount > 0 ? 'text-rose-400' : 'text-slate-500'}`}>계단 {stats.stairCount}</span>
               <span className={`text-xs font-black ${stats.steepCount > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>언덕 {stats.steepCount}</span>
             </div>
           </div>
-          <div className="h-6 w-px bg-slate-700"></div>
+          <div className="h-6 w-px bg-gray-200"></div>
           <div className="text-center">
             {routeInfo?.conceptType?.startsWith('beta') ? (
               <>
-                <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">첫 신호</p>
+                <p className="text-[11px] text-gray-500 font-bold mb-0.5 uppercase tracking-wide">첫 신호</p>
                 <p className={`font-black text-lg ${firstSignalTime && firstSignalTime > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                   {firstSignalTime !== null ? (firstSignalTime === 0 ? '통과 가능' : `${firstSignalTime}초`) : '탐색중'}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-[11px] text-slate-400 font-bold mb-0.5 uppercase tracking-wide">무정지율</p>
+                <p className="text-[11px] text-gray-500 font-bold mb-0.5 uppercase tracking-wide">무정지율</p>
                 <p className="font-black text-lg text-emerald-400">{stats.successRate}%</p>
               </>
             )}
@@ -405,7 +405,7 @@ export function RouteMapPage() {
 
         <button
           onClick={() => navigate("/tracking", { state: { routeInfo } })}
-          className="w-full bg-indigo-600 text-white font-black tracking-widest text-lg py-4 rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full bg-orange-500 text-white font-black tracking-widest text-lg py-4 rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           <Play className="size-5 fill-current" />
           START RUNNING

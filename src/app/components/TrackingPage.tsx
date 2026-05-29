@@ -67,7 +67,7 @@ export function TrackingPage() {
          if (grade === 3) return "#7E22CE"; // 보라(가파름)
          if (grade === 2) return "#E11D48"; // 빨강(계단)
          if (grade === 1) return "#F59E0B"; // 노랑(단차)
-         return "#4F46E5"; // 인디고(평지)
+         return "#f97316"; // 오렌지(평지)
       };
 
       routeInfo.path.forEach((c: any, index: number) => {
@@ -163,7 +163,7 @@ export function TrackingPage() {
     const path = pathPoints.map((p) => new window.Tmapv3.LatLng(p.lat, p.lng));
     trackedPolylineRef.current = new window.Tmapv3.Polyline({
       path: path,
-      strokeColor: "#312e81",
+      strokeColor: "#ea580c",
       strokeWeight: 6,
       strokeOpacity: 0.9,
       strokeStyle: "solid",
@@ -251,40 +251,40 @@ export function TrackingPage() {
   const pace = distance > 0 ? time / 60 / distance : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-gray-50 text-slate-900 font-sans flex flex-col selection:bg-orange-500/30">
       {/* 헤더 */}
       <div className="absolute top-0 w-full z-50 p-4 flex items-center justify-between pointer-events-none">
-        <button onClick={() => navigate(-1)} className="pointer-events-auto bg-slate-900/60 backdrop-blur-md p-3 rounded-full text-white hover:bg-slate-800/80 transition-colors border border-slate-700">
+        <button onClick={() => navigate(-1)} className="pointer-events-auto bg-white/80 backdrop-blur-md p-3 rounded-full text-slate-900 hover:bg-gray-100 transition-colors border border-gray-200">
           <ArrowLeft className="size-5" />
         </button>
-        <div className="bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-full pointer-events-auto border border-slate-700">
-          <span className="font-black text-emerald-400 text-sm tracking-widest uppercase">Live Tracking</span>
+        <div className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full pointer-events-auto border border-gray-200">
+          <span className="font-black text-orange-500 text-sm tracking-widest uppercase">Live Tracking</span>
         </div>
       </div>
 
       {/* 🗺️ 상단 TMAP 영역 (동적 비율 조절) */}
-      <div className={`relative ${isMapExpanded ? "h-[85vh]" : "h-[45vh]"} bg-slate-900 transition-all duration-500 ease-in-out shrink-0`}>
+      <div className={`relative ${isMapExpanded ? "h-[85vh]" : "h-[45vh]"} bg-gray-100 transition-all duration-500 ease-in-out shrink-0`}>
         <div id={mapContainerId} className="w-full h-full" />
         
         {/* 지도 확대/축소 토글 버튼 */}
-        <button onClick={() => setIsMapExpanded(!isMapExpanded)} className="absolute bottom-24 right-4 bg-slate-900/80 backdrop-blur-md border border-slate-700 p-3 rounded-2xl shadow-lg z-[1000] active:scale-[0.95] transition-all text-white">
+        <button onClick={() => setIsMapExpanded(!isMapExpanded)} className="absolute bottom-24 right-4 bg-white/90 backdrop-blur-md border border-gray-200 p-3 rounded-2xl shadow-lg z-[1000] active:scale-[0.95] transition-all text-black">
           {isMapExpanded ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
         </button>
 
         {/* 다음 교차로 신호 패널 */}
         <div className="absolute bottom-4 left-4 right-4 z-[1000]">
-          <div className="bg-slate-900/90 backdrop-blur-xl rounded-2xl p-4 border border-slate-700 shadow-2xl">
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 border border-gray-200 shadow-2xl">
             <div className="flex items-center justify-between mb-1">
-              <div className="text-xs font-bold text-slate-400 tracking-wider">주변 교차로 (150m)</div>
+              <div className="text-xs font-bold text-gray-500 tracking-wider">주변 교차로 (150m)</div>
               {nextSignal ? (
                 <div className={`text-sm font-black px-2 py-0.5 rounded-md ${nextSignal.time > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                   {nextSignal.emoji} {nextSignal.status} ({nextSignal.time}초)
                 </div>
               ) : (
-                <div className="text-xs font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded-md">탐색 중...</div>
+                <div className="text-xs font-bold text-slate-500 bg-gray-100 px-2 py-1 rounded-md">탐색 중...</div>
               )}
             </div>
-            <div className="text-[11px] text-slate-300 font-medium mt-1 border-t border-slate-700/50 pt-2">
+            <div className="text-[11px] text-gray-600 font-medium mt-1 border-t border-gray-200 pt-2">
               {nextSignal && nextSignal.time > 15 ? "✨ 현재 페이스로 통과 가능합니다." 
                 : nextSignal && nextSignal.time > 0 ? "🏃 통과하려면 스퍼트를 내세요!" 
                 : nextSignal ? "🛑 신호 대기가 예상됩니다. 페이스를 늦추세요." : "근처에 신호등이 없습니다."}
@@ -294,35 +294,35 @@ export function TrackingPage() {
       </div> 
 
       {/* 📊 하단 대시보드 영역 */}
-      <div className="flex-1 bg-slate-950 text-white rounded-t-[2rem] -mt-4 relative z-20 pt-6 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] border-t border-slate-800">
+      <div className="flex-1 bg-white text-black rounded-t-[2rem] -mt-4 relative z-20 pt-6 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-gray-200">
         <div className="max-w-md mx-auto">
           
           {/* 3단 메인 스탯 */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">경과 시간</div>
-              <div className="text-3xl font-black tracking-tighter text-white">{formatTime(time)}</div>
+              <div className="text-3xl font-black tracking-tighter text-black">{formatTime(time)}</div>
             </div>
-            <div className="text-center border-x border-slate-800">
+            <div className="text-center border-x border-gray-200">
               <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">달린 거리</div>
-              <div className="text-3xl font-black tracking-tighter text-indigo-400">{distance.toFixed(2)}<span className="text-sm ml-0.5">km</span></div>
+              <div className="text-3xl font-black tracking-tighter text-orange-500">{distance.toFixed(2)}<span className="text-sm ml-0.5">km</span></div>
             </div>
             <div className="text-center">
               <div className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">페이스</div>
-              <div className="text-3xl font-black tracking-tighter text-white">{pace > 0 ? pace.toFixed(1) : "--"}<span className="text-sm ml-0.5">/km</span></div>
+              <div className="text-3xl font-black tracking-tighter text-black">{pace > 0 ? pace.toFixed(1) : "--"}<span className="text-sm ml-0.5">/km</span></div>
             </div>
           </div>
 
           {/* 서브 스탯 카드 */}
           <div className="grid grid-cols-2 gap-3 mb-8">
-            <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="text-[10px] font-bold text-slate-500 mb-1">신호 대기 횟수</div>
-              <div className="text-xl font-black text-white">0회</div>
+              <div className="text-xl font-black text-slate-900">0회</div>
               <div className="text-[10px] font-bold text-emerald-500 mt-1">✨ 무정지 순항 중!</div>
             </div>
-            <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="text-[10px] font-bold text-slate-500 mb-1">목표 달성률</div>
-              <div className="text-xl font-black text-white">{routeInfo?.distance ? Math.min(100, Math.round((distance / routeInfo.distance) * 100)) : 0}%</div>
+              <div className="text-xl font-black text-slate-900">{routeInfo?.distance ? Math.min(100, Math.round((distance / routeInfo.distance) * 100)) : 0}%</div>
               <div className="text-[10px] font-bold text-slate-500 mt-1">총 {routeInfo?.distance || 0}km 코스</div>
             </div>
           </div>
@@ -331,7 +331,7 @@ export function TrackingPage() {
           <div className="flex items-center justify-center gap-6">
             <button
               onClick={() => setIsRunning(!isRunning)}
-              className={`rounded-[2rem] p-6 shadow-lg transition-all active:scale-[0.95] border-2 ${isRunning ? 'bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-700' : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-500'}`}
+              className={`rounded-[2rem] p-6 shadow-lg transition-all active:scale-[0.95] border-2 ${isRunning ? 'bg-white text-orange-500 border-gray-200 hover:bg-gray-50' : 'bg-orange-500 text-white border-orange-500 hover:bg-orange-400'}`}
             >
               {isRunning ? <Pause className="size-8" fill="currentColor" /> : <Play className="size-8 ml-1" fill="currentColor" />}
             </button>
@@ -339,7 +339,7 @@ export function TrackingPage() {
             {(isRunning || time > 0) && (
               <button
                 onClick={() => { setIsRunning(false); navigate("/complete"); }}
-                className="bg-slate-900 text-rose-400 border-2 border-slate-800 rounded-[2rem] p-6 shadow-md hover:bg-slate-800 transition-all active:scale-[0.95]"
+                className="bg-black text-white border-2 border-black rounded-[2rem] p-6 shadow-md hover:bg-gray-800 transition-all active:scale-[0.95]"
               >
                 <Square className="size-8" fill="currentColor" />
               </button>

@@ -46,7 +46,7 @@ export function HistoryPage() {
   const avgDistance = totalDistance / weeklyData.filter(d => d.distance > 0).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
       {/* Header */}
       <div className="bg-white border-b border-border px-6 py-4">
         <div className="max-w-md mx-auto flex items-center gap-4">
@@ -62,7 +62,7 @@ export function HistoryPage() {
 
       <div className="max-w-md mx-auto px-6 py-6">
         {/* Weekly Summary */}
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-3xl p-6 mb-6 shadow-lg">
+        <div className="bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-3xl p-6 mb-6 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="size-5" />
             <span className="text-sm opacity-90">이번 주 (5월 7일 - 5월 13일)</span>
@@ -100,9 +100,9 @@ export function HistoryPage() {
               <Line
                 type="monotone"
                 dataKey="distance"
-                stroke="#6366f1"
+                stroke="#f97316"
                 strokeWidth={3}
-                dot={{ fill: "#6366f1", r: 5 }}
+                dot={{ fill: "#f97316", r: 5 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -116,7 +116,7 @@ export function HistoryPage() {
               <div key={day.id} className="text-center">
                 <div className="text-xs text-muted-foreground mb-2">{day.day}</div>
                 <div className={`aspect-square rounded-xl flex items-center justify-center text-2xl ${
-                  day.mood ? "bg-indigo-50" : "bg-gray-50"
+                  day.mood ? "bg-orange-50" : "bg-gray-50"
                 }`}>
                   {day.mood || "—"}
                 </div>

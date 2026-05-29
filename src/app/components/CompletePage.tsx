@@ -58,17 +58,17 @@ export function CompletePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 px-6 py-8 font-sans text-slate-100 selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-gray-50 px-6 py-8 font-sans text-slate-900 selection:bg-orange-500/30">
       <div className="max-w-md mx-auto">
         {/* Celebration */}
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🎉</div>
-          <h1 className="mb-2 text-2xl font-black text-white tracking-tight">러닝 완료!</h1>
+          <h1 className="mb-2 text-2xl font-black text-black tracking-tight">러닝 완료!</h1>
           <p className="text-slate-400 font-medium text-sm">오늘도 멈추지 않은 당신</p>
         </div>
 
         {/* Run Summary */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-6 shadow-md">
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 mb-6 shadow-md">
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="text-center">
               <div className="text-3xl font-medium mb-1">5.2</div>
@@ -84,7 +84,7 @@ export function CompletePage() {
             </div>
           </div>
 
-          <div className="border-t border-slate-800 pt-4">
+          <div className="border-t border-gray-200 pt-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-slate-400">신호 대기</span>
               <span className="font-medium text-emerald-400">0회 ✨</span>
@@ -97,8 +97,8 @@ export function CompletePage() {
         </div>
 
         {/* Mood Selection */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-6 shadow-md">
-          <h3 className="mb-4 font-bold text-white">오늘 러닝은 어땠나요?</h3>
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 mb-6 shadow-md">
+          <h3 className="mb-4 font-bold text-black">오늘 러닝은 어땠나요?</h3>
           <div className="grid grid-cols-3 gap-3">
             {moods.map((mood) => (
               <button
@@ -106,22 +106,22 @@ export function CompletePage() {
                 onClick={() => setSelectedMood(mood.value)}
                 className={`rounded-2xl p-4 transition-all ${
                   selectedMood === mood.value
-                    ? "bg-indigo-600/20 border-2 border-indigo-500"
-                    : "bg-slate-800 hover:bg-slate-700 border-2 border-transparent"
+                    ? "bg-orange-500/10 border-2 border-orange-500"
+                    : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
                 }`}
               >
                 <div className="text-3xl mb-2">{mood.emoji}</div>
-                <div className="text-xs font-medium text-slate-300">{mood.label}</div>
+                <div className="text-xs font-medium text-slate-500">{mood.label}</div>
               </button>
             ))}
           </div>
         </div>
 
         {/* 🔥 AI 학습 데이터 수집용 코스 평가 (1~10점) */}
-        <div className="bg-slate-900 rounded-3xl p-6 mb-6 shadow-md border-2 border-slate-800">
+        <div className="bg-white rounded-3xl p-6 mb-6 shadow-md border-2 border-gray-200">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-white">코스 형태 만족도</h3>
-            <span className="text-xl font-black text-indigo-400">{routeScore}점</span>
+            <h3 className="font-bold text-black">코스 형태 만족도</h3>
+            <span className="text-xl font-black text-orange-500">{routeScore}점</span>
           </div>
           <p className="text-[11px] text-slate-500 mb-4 leading-relaxed">
             생성된 경로가 원래 목적(또는 도안)과 얼마나 비슷한지 평가해 주세요. 이 평가 데이터는 AI가 완벽한 도로망 매핑을 학습하는 데 사용됩니다.
@@ -133,7 +133,7 @@ export function CompletePage() {
             step="1" 
             value={routeScore} 
             onChange={(e) => setRouteScore(Number(e.target.value))}
-            className="w-full accent-indigo-500 mb-2 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+            className="w-full accent-orange-500 mb-2 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
           />
           <div className="flex justify-between text-[10px] text-slate-400 font-bold">
             <span>1점 (전혀 다름)</span>
@@ -142,7 +142,7 @@ export function CompletePage() {
         </div>
 
         {/* Personal Message */}
-        <div className="bg-indigo-900/30 border border-indigo-500/30 text-indigo-100 rounded-3xl p-6 mb-6 shadow-sm">
+        <div className="bg-orange-50 border border-orange-200 text-orange-900 rounded-3xl p-6 mb-6 shadow-sm">
           <div className="text-sm font-bold opacity-80 mb-2 uppercase tracking-wide">💭 Daily Message</div>
           <p className="leading-relaxed">
             "오늘도 무사히 완주하셨네요! 입력해주신 {routeScore}점의 피드백을 바탕으로 내일은 더 완벽한 코스를 만들어 드릴게요."
@@ -153,7 +153,7 @@ export function CompletePage() {
         <div className="flex gap-4">
           <button
             onClick={() => navigate("/")}
-            className="flex-1 bg-slate-800 text-white rounded-2xl py-4 flex items-center justify-center gap-2 shadow-md hover:bg-slate-700 transition-all font-bold border border-slate-700 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex-1 bg-white text-black rounded-2xl py-4 flex items-center justify-center gap-2 shadow-md hover:bg-gray-50 transition-all font-bold border border-gray-200 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Home className="size-5" />
             홈으로
@@ -161,7 +161,7 @@ export function CompletePage() {
           <button 
             onClick={handleSaveRecord}
             disabled={isSaving}
-            className="flex-1 bg-indigo-600 border-2 border-indigo-500 rounded-2xl py-4 flex items-center justify-center gap-2 hover:bg-indigo-500 transition-all font-bold text-white shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 bg-black border-2 border-black rounded-2xl py-4 flex items-center justify-center gap-2 hover:bg-gray-800 transition-all font-bold text-white shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           >
             <Save className="size-5" />
             {isSaving ? '저장 중...' : '평가 및 저장'}
@@ -170,7 +170,7 @@ export function CompletePage() {
 
         {/* Streak Counter */}
         <div className="mt-6 text-center">
-          <div className="inline-flex items-center justify-center gap-2 bg-slate-900 px-4 py-2 rounded-full shadow-sm border border-slate-800">
+          <div className="inline-flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200">
             <span className="text-lg">🔥</span>
             <span className="text-sm font-bold text-emerald-400">7일 연속 러닝 중!</span>
           </div>
