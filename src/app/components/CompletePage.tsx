@@ -17,15 +17,19 @@ export function CompletePage() {
     }
   }, []);
 
-  // onst record = {
+  const handleSaveRecord = async () => {
+    const record = {
       date: new Date().toISOString(),
       mood: selectedMood,
       routeScore: routeScore, // 1~10점 평가 점수
       routeData: routeInfo,   // 어떤 경로였는지 맵핑 데이터
     };
-     t fd', {
-  :
-    nt-Type': 'application/json' },
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/save-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ record })
       });
       const result = await response.json();
@@ -164,7 +168,8 @@ export function CompletePage() {
 
         {/* Streak Counter */}
         <div className="mt-6 text-center">
-          <div className="inline-flex ilassName="text-lg">🔥</span>
+          <div className="inline-flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100">
+            <span className="text-lg">🔥</span>
             <span className="text-sm font-medium">7일 연속 러닝 중!</span>
           </div>
         </div>
