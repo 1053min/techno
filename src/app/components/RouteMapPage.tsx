@@ -31,12 +31,14 @@ export function RouteMapPage() {
   const tmapRef = useRef<any>(null);
   
   const [routeInfo, setRouteInfo] = useState<any>(null);
-  const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100, stairCount: 0 });
+  const [stats, setStats] = useState({ length: 0, intersectionCount: 0, successRate: 100, stairCount: 0, steepCount: 0 });
   const [activeIntersections, setActiveIntersections] = useState<any[]>([]);
   const [firstSignalTime, setFirstSignalTime] = useState<number | null>(null);
+  const [activeLayer, setActiveLayer] = useState<'general' | 'gradient' | 'stair'>('general');
   const targetPacePerKm = 6.0; // km당 6분 (360초) 타겟 페이스 시뮬레이션
 
   const markersRef = useRef<any[]>([]);
+  const polylinesRef = useRef<any[]>([]);
 
   // 1. RoutesPage에서 선택한 경로(GPX 기반 데이터) 불러오기
   useEffect(() => {
@@ -55,7 +57,7 @@ export function RouteMapPage() {
     }
   }, []);
 
-  // 2. TMAP 지도 초기화, GPX 경로 드로잉 및 통계 계산
+  // 2. TMAP 지도 초기화 및 통계 계산 (마운트 시 1회)
   useEffect(() => {
     if (!routeInfo || tmapRef.current || !window.Tmapv3) return;
 
@@ -69,58 +71,6 @@ export function RouteMapPage() {
       zoomControl: false,
     });
     tmapRef.current = map;
-
-    // 💡 [드로잉 러닝/실제 인도 경로 복구] GPX 데이터 기반 Polyline 드로잉
-    // 🌸 No style loaded 에러를 막기 위해 TMAP 내부 이벤트 대기 시간을 1.5초로 여유롭게 설정
-    setTimeout(() => {
-      try {
-        if (!tmapRef.current) return;
-        
-        // 💡 경사도(Grade) 배열을 분할하여 멀티 컬러 그라데이션 라인 렌더링
-        const pathSegments: any[] = [];
-        let currentSegment: any = { path: [], color: "" };
-        
-        const getColorByGrade = (grade: number) => {
-           if (grade === 2) return "#E11D48"; // Rose (계단/가파름)
-           if (grade === 1) return "#F59E0B"; // Amber (단차/얕은 경사)
-           return "#4F46E5"; // Indigo (평탄)
-        };
-
-        routeInfo.path.forEach((c: any, index: number) => {
-          const grade = c[2] || 0; // advancedRouteService에서 주입한 등급 정보
-          const color = getColorByGrade(grade);
-          const latLng = new window.Tmapv3.LatLng(c[1], c[0]);
-
-          if (index === 0) {
-            currentSegment.color = color;
-            currentSegment.path.push(latLng);
-          } else {
-            if (currentSegment.color !== color) {
-              currentSegment.path.push(latLng); // 구간이 끊어지지 않도록 끝점 연결
-              pathSegments.push(currentSegment);
-              currentSegment = { path: [latLng], color };
-            } else {
-              currentSegment.path.push(latLng);
-            }
-          }
-        });
-        if (currentSegment.path.length > 0) pathSegments.push(currentSegment);
-
-        pathSegments.forEach((seg) => {
-          new window.Tmapv3.Polyline({
-            path: seg.path,
-            strokeColor: seg.color,
-            strokeWeight: 8,
-            strokeOpacity: 0.9,
-            strokeStyle: "solid",
-            direction: true,
-            map: tmapRef.current,
-          });
-        });
-      } catch (e) {
-        console.warn("TMAP Polyline 렌더링 에러 무시:", e);
-      }
-    }, 1500);
 
     const isBeta = routeInfo.conceptType?.startsWith('beta');
 
@@ -164,7 +114,8 @@ export function RouteMapPage() {
       length: Number(totalLen.toFixed(2)), 
       intersectionCount: filteredIntersections.length, 
       successRate: 100, // 추후 백엔드 연동 시 확률 계산
-      stairCount: routeInfo.stairCount || 0
+      stairCount: routeInfo.stairCount || 0,
+      steepCount: routeInfo.steepCount || 0
     });
 
     // React Strict Mode 마운트/언마운트 사이클 대응 (컨테이너 클린업)
@@ -176,6 +127,71 @@ export function RouteMapPage() {
       }
     };
   }, [routeInfo]);
+
+  // 2-1. 레이어 상태(activeLayer)에 따른 경로 렌더링
+  useEffect(() => {
+    if (!tmapRef.current || !routeInfo) return;
+
+    // 기존에 그려진 폴리라인들 제거
+    polylinesRef.current.forEach(p => p.setMap(null));
+    polylinesRef.current = [];
+
+    setTimeout(() => {
+      try {
+        const pathSegments: any[] = [];
+        let currentSegment: any = { path: [], color: "" };
+        
+        const getColorByLayer = (grade: number) => {
+           if (activeLayer === 'general') return "#4F46E5"; // 기본: 전부 파란색
+           if (activeLayer === 'gradient') {
+             if (grade === 3) return "#7E22CE"; // 보라 (가파름)
+             if (grade === 1) return "#EF4444"; // 빨강 (얕은 경사)
+             return "#94A3B8"; // 회색 (평탄/계단무시)
+           }
+           if (activeLayer === 'stair') {
+             if (grade === 2) return "#E11D48"; // 빨강 (계단)
+             return "#CBD5E1"; // 밝은 회색 (평탄/경사무시)
+           }
+           return "#4F46E5";
+        };
+
+        routeInfo.path.forEach((c: any, index: number) => {
+          const grade = c[2] || 0; 
+          const color = getColorByLayer(grade);
+          const latLng = new window.Tmapv3.LatLng(c[1], c[0]);
+
+          if (index === 0) {
+            currentSegment.color = color;
+            currentSegment.path.push(latLng);
+          } else {
+            if (currentSegment.color !== color) {
+              currentSegment.path.push(latLng); 
+              pathSegments.push(currentSegment);
+              currentSegment = { path: [latLng], color };
+            } else {
+              currentSegment.path.push(latLng);
+            }
+          }
+        });
+        if (currentSegment.path.length > 0) pathSegments.push(currentSegment);
+
+        pathSegments.forEach((seg) => {
+          const polyline = new window.Tmapv3.Polyline({
+            path: seg.path,
+            strokeColor: seg.color,
+            strokeWeight: 8,
+            strokeOpacity: 0.9,
+            strokeStyle: "solid",
+            direction: true, // 화살표
+            map: tmapRef.current,
+          });
+          polylinesRef.current.push(polyline);
+        });
+      } catch (e) {
+        console.warn("TMAP Polyline 렌더링 에러:", e);
+      }
+    }, 500);
+  }, [routeInfo, activeLayer]);
 
   // 3. 백엔드 최적화: 10초 주기 전체 신호 대량 동기화
   useEffect(() => {
@@ -319,6 +335,14 @@ export function RouteMapPage() {
 
       {/* TMAP 영역 */}
       <div className="flex-1 w-full relative z-0 overflow-hidden">
+        
+        {/* 🗺️ 지도 레이어 선택 UI */}
+        <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-slate-100 p-1 flex flex-col gap-1">
+          <button onClick={() => setActiveLayer('general')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'general' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>일반 경로</button>
+          <button onClick={() => setActiveLayer('gradient')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'gradient' ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>경사도 뷰</button>
+          <button onClick={() => setActiveLayer('stair')} className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors ${activeLayer === 'stair' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>계단 뷰</button>
+        </div>
+
         <div id={mapContainerId} className="w-full h-full" />
         
         {/* 🌸 벚꽃길 코스 전용 이펙트 */}
@@ -355,8 +379,11 @@ export function RouteMapPage() {
           </div>
           <div className="h-6 w-px bg-slate-200"></div>
           <div className="text-center">
-            <p className="text-[11px] text-slate-500 font-medium mb-0.5">경사도/계단</p>
-            <p className={`font-black text-lg ${stats.stairCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{stats.stairCount > 0 ? stats.stairCount + '곳 주의' : '평탄함'}</p>
+            <p className="text-[11px] text-slate-500 font-medium mb-0.5">지형 특성</p>
+            <div className="flex gap-2 justify-center items-center">
+              <span className={`text-xs font-black ${stats.stairCount > 0 ? 'text-rose-500' : 'text-slate-400'}`}>계단 {stats.stairCount}</span>
+              <span className={`text-xs font-black ${stats.steepCount > 0 ? 'text-purple-600' : 'text-slate-400'}`}>경사 {stats.steepCount}</span>
+            </div>
           </div>
           <div className="h-6 w-px bg-slate-200"></div>
           <div className="text-center">

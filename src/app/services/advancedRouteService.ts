@@ -61,20 +61,23 @@ function calculateShapeError(fullPath: Array<any>, template: Array<[number, numb
   return mse / numPoints;
 }
 
-// 💡 삐죽 튀어나온 경로(Spike/Backtracking)를 제거하여 선형을 매끄럽게 만드는 필터
+// 💡 고도화된 스파이크 & 백트래킹(왕복) 제거 필터
 function removeSpikes(path: Array<any>) {
   const smoothed: Array<any> = [];
   for (let i = 0; i < path.length; i++) {
-    if (smoothed.length >= 2) {
-      const p1 = smoothed[smoothed.length - 2]; 
-      const p3 = path[i]; 
-      const dist = Math.sqrt(Math.pow(p1[0] - p3[0], 2) + Math.pow(p1[1] - p3[1], 2));
-      if (dist < 0.00025) { 
-        smoothed.pop(); 
-        continue;
+    let foundBacktrack = false;
+    // 최근 지나온 경로(최대 15개 뎁스)를 스캔하여, 현재 점과 매우 가까운 곳을 다시 지나는 경우(왕복/루프) 그 사이를 잘라냅니다.
+    for (let j = Math.max(0, smoothed.length - 15); j < smoothed.length - 1; j++) {
+      const dist = Math.sqrt(Math.pow(smoothed[j][0] - path[i][0], 2) + Math.pow(smoothed[j][1] - path[i][1], 2));
+      if (dist < 0.0003) { // 약 20~30m 이내로 다시 돌아왔다면 왕복 스파이크로 간주
+        smoothed.length = j + 1; // 겹치는 루프 구간 통째로 폐기
+        foundBacktrack = true;
+        break;
       }
     }
-    smoothed.push(path[i]);
+    if (!foundBacktrack) {
+      smoothed.push(path[i]);
+    }
   }
   return smoothed;
 }
@@ -119,19 +122,24 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
       if (data.features) {
         let score = 100;
         let stairCount = 0;
+        let steepCount = 0;
         let crosswalkCount = 0;
         let actualDist = 0;
         const fullPath: Array<any> = [];
 
         data.features.forEach((f: any) => {
-          // 💡 인도 선형 좌표 추출 및 경사도/단차 등급(Grade) 주입
+          // 💡 인도 선형 좌표 추출 및 계단/경사도 분리 주입
           if (f.geometry.type === 'LineString') {
-            let grade = 0; // 0: 평지, 1: 약한 단차, 2: 가파른 계단
-            if (f.properties?.facilityType === '14' || f.properties?.facilityType === '15') {
+            let grade = 0; // 0: 평지, 1: 얕은 경사, 2: 계단, 3: 가파른 경사
+            if (f.properties?.facilityType === '14') {
               stairCount++;
-              grade = 2; 
+              grade = 2; // 계단
+            } else if (f.properties?.facilityType === '15') {
+              steepCount++;
+              grade = 3; // 가파른 경사
             } else if (f.properties?.facilityType === '16' || f.properties?.facilityType === '17') {
-              grade = 1; 
+              steepCount++;
+              grade = 1; // 얕은 경사/단차
             }
             
             f.geometry.coordinates.forEach((coord: any) => {
@@ -157,15 +165,18 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
           score -= stairCount * 2; // 감점 완화
         }
         
-        if (isValid && fullPath.length > 0) {
+        // 스파이크 제거 후 최종 경로 삽입
+        const cleanedPath = removeSpikes(fullPath);
+        if (isValid && cleanedPath.length > 0) {
           results.push({
             id: cand.id,
             name: cand.name,
             conceptType: 'beta_comfort',
-            path: fullPath,
+            path: cleanedPath,
             distance: actualDist,
             score: Math.max(80, Math.min(100, Math.round(score))), // 최소 80점 보장 및 100점 만점
             stairCount,
+            steepCount,
             crosswalkCount,
           });
         }
@@ -173,27 +184,6 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
     } catch (e) {
       console.warn("후보군 API 호출 에러", e);
     }
-  }
-
-  // TMAP API가 모두 실패하여 빈 배열이 반환되면 UI가 튕기는 현상 방지용 Fallback
-  if (results.length === 0) {
-    console.warn("모든 쾌적 경로 API 탐색이 실패하여 임시 다각형을 반환합니다.");
-    results.push({
-      id: 99,
-      name: "기본 순환 코스 (안전모드)",
-      conceptType: 'beta_comfort',
-      path: [
-        [currentLng, currentLat, 0], 
-        [currentLng + lngOffset, currentLat, 0], 
-        [currentLng + lngOffset, currentLat + latOffset, 0], 
-        [currentLng, currentLat + latOffset, 0], 
-        [currentLng, currentLat, 0]
-      ],
-      distance: distanceKm,
-      score: 50,
-      stairCount: 0,
-      crosswalkCount: 0,
-    });
   }
 
   // 점수(쾌적도) 순으로 정렬하여 반환

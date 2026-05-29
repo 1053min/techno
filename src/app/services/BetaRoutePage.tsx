@@ -26,6 +26,13 @@ export function BetaRoutePage() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         const results = await generateComfortRoute(distance, latitude, longitude, stairOption);
+        
+        if (results.length === 0) {
+          alert("설정하신 조건(거리/회피 옵션)에 맞는 경로를 찾을 수 없습니다. 옵션을 변경해보세요.");
+          setLoading(false);
+          return;
+        }
+        
         setComfortCandidates(results);
         setLoading(false);
       },
