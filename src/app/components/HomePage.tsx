@@ -67,8 +67,8 @@ export function HomePage() {
                 <TrendingUp className="size-5 text-slate-800" />
               </div>
               <div>
-                <div className="font-bold text-sm text-slate-900 mb-0.5">나의 기록</div>
-                <div className="text-[10px] text-gray-500 font-medium">성장 그래프 분석</div>
+              <div className="font-bold text-base text-slate-900 mb-0.5">나의 기록</div>
+              <div className="text-xs text-gray-500 font-medium">성장 그래프 분석</div>
               </div>
             </button>
 
@@ -80,8 +80,8 @@ export function HomePage() {
                 <Award className="size-5 text-orange-500" />
               </div>
               <div>
-                <div className="font-bold text-sm text-slate-900 mb-0.5">내 뱃지</div>
-                <div className="text-[10px] text-gray-500 font-medium">달성 보상 확인</div>
+              <div className="font-bold text-base text-slate-900 mb-0.5">내 뱃지</div>
+              <div className="text-xs text-gray-500 font-medium">달성 보상 확인</div>
               </div>
             </button>
             
@@ -94,8 +94,8 @@ export function HomePage() {
                   <Map className="size-5 text-emerald-600" />
                 </div>
                 <div>
-                  <div className="font-bold text-sm text-slate-900 mb-0.5">실시간 신호 지도</div>
-                  <div className="text-xs text-gray-500 font-medium">주변 교차로 정보 탐색</div>
+                <div className="font-bold text-base text-slate-900 mb-0.5">실시간 신호 지도</div>
+                <div className="text-sm text-gray-500 font-medium">주변 교차로 정보 탐색</div>
                 </div>
               </div>
               <ChevronRight className="size-5 text-gray-300" />
@@ -113,8 +113,8 @@ export function HomePage() {
               >
                 <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-xl border border-gray-100">🎨</div>
                 <div className="flex-1">
-                  <div className="font-bold text-sm text-slate-900 mb-0.5">GPS 아트 드로잉</div>
-                  <div className="text-xs text-gray-500 font-medium">지도 위에 예술을 남겨보세요</div>
+                <div className="font-bold text-base text-slate-900 mb-0.5">GPS 아트 드로잉</div>
+                <div className="text-sm text-gray-500 font-medium">지도 위에 예술을 남겨보세요</div>
                 </div>
                 <ChevronRight className="size-4 text-gray-300" />
               </button>
@@ -125,8 +125,8 @@ export function HomePage() {
               >
                 <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-xl border border-white/10">🧪</div>
                 <div className="flex-1">
-                  <div className="font-bold text-sm mb-0.5">베타 기능 연구소</div>
-                  <div className="text-xs text-gray-400 font-medium">새로운 기능을 먼저 체험하세요</div>
+                <div className="font-bold text-base mb-0.5">베타 기능 연구소</div>
+                <div className="text-sm text-gray-400 font-medium">새로운 기능을 먼저 체험하세요</div>
                 </div>
                 <ChevronRight className="size-4 text-gray-500" />
               </button>
@@ -142,7 +142,7 @@ export function HomePage() {
             className="w-full bg-orange-500 text-white rounded-full py-4 px-6 shadow-[0_8px_25px_rgb(249,115,22,0.35)] hover:shadow-[0_8px_30px_rgb(249,115,22,0.5)] hover:-translate-y-1 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-orange-400"
           >
             <Play className="size-6" fill="white" />
-            <span className="font-black tracking-wide text-lg mt-0.5">러닝 시작하기</span>
+            <span className="font-black tracking-wide text-xl mt-0.5">러닝 시작하기</span>
           </button>
         </div>
       </div>

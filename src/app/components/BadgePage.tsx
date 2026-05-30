@@ -15,6 +15,18 @@ export function BadgePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
+      {/* 빛 반사 애니메이션 CSS */}
+      <style>{`
+        @keyframes badge-shine {
+          0% { transform: translateX(-150%) skewX(-25deg); }
+          20% { transform: translateX(250%) skewX(-25deg); }
+          100% { transform: translateX(250%) skewX(-25deg); }
+        }
+        .animate-badge-shine {
+          animation: badge-shine 3s ease infinite;
+        }
+      `}</style>
+
       {/* 헤더 */}
       <div className="bg-white px-6 py-4 border-b flex items-center gap-4 sticky top-0 z-50 shadow-xs">
         <button onClick={() => navigate("/")} className="hover:bg-slate-100 p-1 rounded-full transition-colors">
@@ -36,12 +48,16 @@ export function BadgePage() {
               }`}
             >
               {/* 뱃지 아이콘 (그라데이션 배경) */}
-              <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-br ${badge.color} flex items-center justify-center text-4xl shadow-inner mb-3`}>
+              <div className={`relative w-20 h-20 mx-auto rounded-full bg-gradient-to-br ${badge.color} flex items-center justify-center text-4xl shadow-inner overflow-hidden mb-3`}>
                 {badge.emoji}
+                {/* 반짝이는 빛 반사 효과 (획득한 뱃지만 적용) */}
+                {badge.achieved && (
+                  <div className="absolute top-0 bottom-0 left-[-100%] w-full bg-gradient-to-r from-transparent via-white/60 to-transparent animate-badge-shine pointer-events-none z-10" />
+                )}
               </div>
               
-              <h3 className="font-bold text-slate-800 text-sm mb-1">{badge.title}</h3>
-              <p className="text-[10px] text-slate-500 leading-tight">{badge.desc}</p>
+              <h3 className="font-bold text-slate-800 text-base mb-1">{badge.title}</h3>
+              <p className="text-xs text-slate-500 leading-tight">{badge.desc}</p>
 
               {/* 자물쇠 오버레이 */}
               {!badge.achieved && (

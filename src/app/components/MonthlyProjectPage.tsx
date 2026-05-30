@@ -21,21 +21,29 @@ export function MonthlyProjectPage() {
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
+  // 파도의 부드러운 곡선을 9개의 꼭짓점으로 쪼개어 만든 베이스 경로
+  const getWavePath = (yOffset: number) => {
+    return `M 10 ${yOffset} L 20 ${yOffset - 12} L 30 ${yOffset - 18} L 40 ${yOffset - 14} L 50 ${yOffset} L 60 ${yOffset + 14} L 70 ${yOffset + 18} L 80 ${yOffset + 12} L 90 ${yOffset}`;
+  };
+
   // 과거에 뛰었던 기록들 (누적된 색상의 실들)
   const pastRuns = [
-    { id: 1, d: "M 10 50 Q 25 30 50 50 T 90 50", color: "#67e8f9" }, // 파도결 1 - sky-400
-    { id: 2, d: "M 10 55 Q 30 35 55 55 T 90 55", color: "#22d3ee" }, // 파도결 2 - cyan-400
-    { id: 3, d: "M 10 60 Q 35 40 60 60 T 90 60", color: "#38bdf8" }, // 파도결 3 - light blue
-    { id: 4, d: "M 10 65 Q 40 45 65 65 T 90 65", color: "#60a5fa" }, // 파도결 4 - blue-400
-    { id: 5, d: "M 10 70 Q 45 50 70 70 T 90 70", color: "#3b82f6" }, // 파도결 5 - blue-500
-    { id: 6, d: "M 10 75 Q 50 55 75 75 T 90 75", color: "#2563eb" }, // 파도결 6 - blue-600
-    { id: 7, d: "M 10 80 Q 55 60 80 80 T 90 80", color: "#1d4ed8" }, // 파도결 7 - blue-700
+    { id: 1, d: getWavePath(50), color: "#67e8f9" }, // 파도결 1
+    { id: 2, d: getWavePath(55), color: "#22d3ee" }, // 파도결 2
+    { id: 3, d: getWavePath(60), color: "#38bdf8" }, // 파도결 3
+    { id: 4, d: getWavePath(65), color: "#60a5fa" }, // 파도결 4
+    { id: 5, d: getWavePath(70), color: "#3b82f6" }, // 파도결 5
+    { id: 6, d: getWavePath(75), color: "#2563eb" }, // 파도결 6
+    { id: 7, d: getWavePath(80), color: "#1d4ed8" }, // 파도결 7
   ];
 
-  // 💡 오늘 달린 삐뚤빼뚤한 GPS 궤적
-  const pathTangled = "M 10 90 L 25 20 L 40 85 L 60 10 L 75 80 L 90 30";
-  // 💡 예술 작품의 일부가 되기 위해 팽팽하게 당겨진 실 (동일한 점 개수로 자연스러운 모핑 애니메이션 유도)
-  const pathStraight = "M 10 85 Q 60 65 85 85 T 90 85";
+  // 전체 작품의 배경이 될 가이드라인 (10개의 층)
+  const guideWaves = Array.from({ length: 10 }, (_, i) => getWavePath(50 + i * 5));
+
+  // 💡 오늘 달린 삐뚤빼뚤한 현실 GPS 궤적 (부드러운 모핑을 위해 파도선과 완벽히 같은 개수의 점(9개) 구조 사용)
+  const pathTangled = "M 10 90 L 15 40 L 25 75 L 35 25 L 50 85 L 65 30 L 75 70 L 85 45 L 90 80";
+  // 💡 예술 작품의 8번째 층으로 펴지며 안착할 형태
+  const pathStraight = getWavePath(85);
 
   return (
     <div className="min-h-screen bg-orange-50 text-slate-900 pb-12 overflow-hidden relative selection:bg-orange-500/30">
@@ -50,7 +58,7 @@ export function MonthlyProjectPage() {
         }
         /* Chrome 등에서 path의 d 속성이 자연스럽게 변하는 모핑 트랜지션 */
         .path-morph {
-          transition: d 1.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 1s ease, filter 1s ease;
+          transition: d 2s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 1s ease, filter 1s ease;
         }
       `}</style>
 
@@ -88,15 +96,18 @@ export function MonthlyProjectPage() {
           {/* 좌측: 실타래 아트 애니메이션 영역 */}
           <div className="flex-1 relative flex items-center justify-center">
             
-            {/* 도안 윤곽선 (배경 못/가이드라인) */}
+            {/* 도안 전체 실루엣 (파도 형태 가이드라인) */}
             <svg viewBox="0 0 100 100" className="absolute w-full h-full opacity-20">
-              <circle cx="50" cy="50" r="45" fill="none" stroke="#f97316" strokeWidth="0.5" strokeDasharray="2,2" />
-              {[...Array(12)].map((_, i) => (
-                <circle 
-                  key={i} 
-                  cx={50 + 45 * Math.cos((i * Math.PI) / 6)} 
-                  cy={50 + 45 * Math.sin((i * Math.PI) / 6)} 
-                  r="1.5" fill="#f97316" 
+              {guideWaves.map((d, i) => (
+                <path
+                  key={`guide-${i}`}
+                  d={d}
+                  fill="none"
+                  stroke="#0ea5e9"
+                  strokeWidth="0.5"
+                  strokeDasharray="1.5,2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               ))}
             </svg>
@@ -110,7 +121,9 @@ export function MonthlyProjectPage() {
                   d={run.d}
                   fill="none"
                   stroke={run.color}
-                  strokeWidth="1"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   className="transition-opacity duration-1000"
                   style={{ opacity: phase > 0 ? 0.6 : 0 }}
                 />
