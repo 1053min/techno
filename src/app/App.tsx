@@ -10,6 +10,7 @@ import { RouteMapPage } from "./components/RouteMapPage";
 import { BadgePage } from "./components/BadgePage";
 import { MonthlyProjectPage } from "./components/MonthlyProjectPage";
 import { BetaRoutePage } from "./services/BetaRoutePage"; // 파일 위치가 components 폴더에 있다면 "./components/BetaRoutePage"로 변경해 주세요.
+import { RouteMap3DPage } from "./components/RouteMap3DPage";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/badges" element={<BadgePage />} />
           <Route path="/monthly-project" element={<MonthlyProjectPage />} />
           <Route path="/beta-routes" element={<BetaRoutePage />} />
+          <Route path="/route-map-3d" element={<RouteMap3DPage />} />
         </Routes>
       </BrowserRouter>
     </div>
