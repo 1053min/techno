@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Map, Wand2, Activity } from "lucide-react";
+import { ArrowLeft, Map, Wand2, Activity, Mountain } from "lucide-react";
 import { useNavigate } from "react-router";
 import { generateComfortRoute, findBestArtMapping } from "../services/advancedRouteService";
 
@@ -43,6 +43,33 @@ export function BetaRoutePage() {
         alert("위치를 가져오는 데 실패했습니다.");
         setLoading(false);
       },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // 3. 3D 지형 다이내믹 코스 테스트 핸들러
+  const handleTest3DRoute = async () => {
+    setLoading(true);
+    
+    if (!navigator.geolocation) {
+      alert("브라우저가 위치 정보를 지원하지 않습니다.");
+      setLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        // 경사도와 계단 데이터가 모두 포함되도록 ignore 옵션으로 3km 코스 생성
+        const results = await generateComfortRoute(3, latitude, longitude, 'ignore', 'ignore');
+        if (results.length > 0) {
+          const routeFor3D = { ...results[0], conceptType: '3d_flyover', name: '3D 다이내믹 런' };
+          sessionStorage.setItem('selected_run_route', JSON.stringify(routeFor3D));
+          navigate("/route-map-3d"); // 💡 새롭게 만들 3D 전용 맵 컴포넌트로 라우팅
+        }
+        setLoading(false);
+      },
+      () => { alert("위치 가져오기 실패"); setLoading(false); },
       { enableHighAccuracy: true }
     );
   };
@@ -178,6 +205,21 @@ export function BetaRoutePage() {
                   <span className="text-[11px] font-black text-slate-300">엄지척</span>
                 </button>
               </div>
+            </div>
+
+            {/* 알고리즘 3번 랩 (3D 맵 테스트) */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-emerald-500/20 p-2 rounded-xl text-emerald-400"><Mountain size={20} /></div>
+                <h2 className="font-black text-lg tracking-tight">3D 다이내믹 코스 뷰어</h2>
+              </div>
+              <p className="text-xs text-slate-400 mb-6 leading-relaxed font-medium">
+                TMAP API에서 추출한 계단(grade=2)과 가파른 경사(grade=3) 데이터를 활용하여, Mapbox 3D 지형 위에 코스를 입체적으로 렌더링하고 가상 비행(Fly-over)합니다.
+              </p>
+              
+              <button onClick={handleTest3DRoute} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-black tracking-wide rounded-2xl transition-all shadow-md flex items-center justify-center gap-2">
+                <Mountain size={18} /> 3D 경로 생성 및 시각화 테스트
+              </button>
             </div>
           </>
         )}
