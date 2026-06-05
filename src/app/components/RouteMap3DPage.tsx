@@ -37,6 +37,7 @@ export function RouteMap3DPage() {
   const targetPacePerKm = 6.0; // km당 6분 페이스 기준
   const [isFlying, setIsFlying] = useState(false);
   const isFlyingRef = useRef(false);
+  const flyMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   // 1. 세션 스토리지에서 선택된 경로 정보 가져오기
   useEffect(() => {
@@ -145,6 +146,19 @@ export function RouteMap3DPage() {
         },
       });
 
+      // 💡 경로를 뚜렷하게 보이게 하는 배경 외곽선(Outline) 레이어 추가
+      map.current!.addLayer({
+        id: "route-outline",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 14, // 본선(8)보다 두껍게 설정하여 테두리 효과
+          "line-opacity": 0.9,
+        },
+      });
+
       map.current!.addLayer({
         id: "route",
         type: "line",
@@ -160,7 +174,7 @@ export function RouteMap3DPage() {
             "#10B981"
           ], 
           "line-width": 8, 
-          "line-opacity": 0.8 
+          "line-opacity": 1.0 // 💡 투명도를 1.0으로 올려 색상을 진하게 표현
         },
       });
     });
@@ -236,17 +250,37 @@ export function RouteMap3DPage() {
         if (isAvailable) {
           const timeOffsetSeconds = signal.trsmUtcTime ? (Date.now() - signal.trsmUtcTime) / 1000 : 0;
           let validTimeCs = 0;
+          let isGreen = false;
+
           for (const dir of directions) {
-            if (signal[dir.key] !== undefined && signal[dir.key] !== null) {
+            if (signal[dir.key] !== undefined && signal[dir.key] !== null && signal[dir.key] > 0) {
               validTimeCs = signal[dir.key];
               activeDir = dir;
+              isGreen = true;
               break;
             }
           }
           
-          const baseTime = centiSecondsToSeconds(validTimeCs);
-          const adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
-          const emoji = getSignalEmoji(adjustedTime);
+          let adjustedTime = 0;
+          let emoji = '🔴';
+
+          if (isGreen) {
+            const baseTime = centiSecondsToSeconds(validTimeCs);
+            adjustedTime = Math.max(0, Math.round(baseTime - timeOffsetSeconds));
+            if (adjustedTime > 0) {
+              emoji = getSignalEmoji(adjustedTime);
+            } else {
+              isGreen = false; // 초록불 남은 시간이 0 이하라면 빨간불로 취급
+            }
+          }
+          
+          if (!isGreen) {
+            // 💡 빨간불일 경우 대기신호 잔여시간(wtStsgRmdrCs) 활용
+            const redTimeCs = signal.wtStsgRmdrCs || 0;
+            const baseRedTime = centiSecondsToSeconds(redTimeCs);
+            adjustedTime = Math.max(0, Math.round(baseRedTime - timeOffsetSeconds));
+            emoji = '🔴';
+          }
 
           const distToIntersection = getDistanceKm(startLat, startLng, intersection.lat, intersection.lng);
 
@@ -260,17 +294,24 @@ export function RouteMap3DPage() {
             const etaSeconds = distToIntersection * targetPacePerKm * 60;
             let paceGuide = "";
             let guideColor = "";
-            const timeDiff = adjustedTime - etaSeconds; 
+            let timeDiff = 0;
             
-            if (timeDiff > 5) {
-              paceGuide = "🏃 속도 유지";
-              guideColor = "#10B981";
-            } else if (timeDiff > -10 && timeDiff <= 5) {
-              paceGuide = "🔥 스퍼트!";
-              guideColor = "#F59E0B";
+            if (isGreen) {
+              timeDiff = adjustedTime - etaSeconds; 
+              if (timeDiff > 5) {
+                paceGuide = "🏃 속도 유지"; guideColor = "#10B981";
+              } else if (timeDiff > -10 && timeDiff <= 5) {
+                paceGuide = "🔥 스퍼트!"; guideColor = "#F59E0B";
+              } else {
+                paceGuide = "🐢 페이스 늦추기"; guideColor = "#EF4444";
+              }
             } else {
-              paceGuide = "🐢 페이스 늦추기";
-              guideColor = "#EF4444";
+              timeDiff = etaSeconds - adjustedTime;
+              if (timeDiff > 0 && adjustedTime > 0) {
+                paceGuide = "🟢 도착 시 초록불!"; guideColor = "#10B981";
+              } else {
+                paceGuide = "🛑 신호 대기 예상"; guideColor = "#EF4444";
+              }
             }
 
             htmlContent = `
@@ -293,9 +334,11 @@ export function RouteMap3DPage() {
             `;
           }
         } else {
+          // 💡 대기중 상태 설명 보강 (단순 로딩 상태임을 알림)
           htmlContent = `
-            <div style="background: #9ca3af; border: 2px solid #4b5563; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 11px; color: white; white-space: nowrap;">
-              ⚪ 대기중
+            <div style="background: #9ca3af; border: 2px solid #4b5563; border-radius: 12px; padding: 4px 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 900; font-size: 11px; color: white; white-space: nowrap;">
+              <span>⚪ 정보 수집중</span>
+              <span style="font-size: 9px; font-weight: 600;">(API 로딩)</span>
             </div>
           `;
         }
@@ -334,6 +377,13 @@ export function RouteMap3DPage() {
       setIsFlying(false);
       isFlyingRef.current = false;
       map.current.stop(); // 진행 중인 애니메이션 정지
+
+      // 💡 비행 중지 시 러너 마커 제거
+      if (flyMarkerRef.current) {
+        flyMarkerRef.current.remove();
+        flyMarkerRef.current = null;
+      }
+
       // 카메라 초기 시점으로 복구
       map.current.flyTo({
         center: [routeInfo.path[0][0], routeInfo.path[0][1]],
@@ -349,6 +399,13 @@ export function RouteMap3DPage() {
     setIsFlying(true);
     isFlyingRef.current = true;
 
+    // 💡 가상 비행 시 내 위치를 보여줄 러너 마커 생성
+    const flyMarkerEl = document.createElement('div');
+    flyMarkerEl.innerHTML = `<div style="width: 20px; height: 20px; background: #fbbf24; border: 4px solid white; border-radius: 50%; box-shadow: 0 0 12px rgba(251, 191, 36, 0.8);"></div>`;
+    flyMarkerRef.current = new mapboxgl.Marker({ element: flyMarkerEl, anchor: 'center' })
+      .setLngLat([routeInfo.path[0][0], routeInfo.path[0][1]])
+      .addTo(map.current!);
+
     const coords = routeInfo.path;
     for (let i = 0; i < coords.length - 1; i++) {
       if (!isFlyingRef.current) break; // 중지 버튼 클릭 시 루프 탈출
@@ -363,6 +420,10 @@ export function RouteMap3DPage() {
 
       await new Promise<void>((resolve) => {
         if (!map.current) { resolve(); return; }
+
+        // 💡 카메라가 이동할 때 러너 마커도 다음 좌표로 이동
+        flyMarkerRef.current?.setLngLat([p2[0], p2[1]]);
+
         map.current.easeTo({
           center: [p2[0], p2[1]],
           bearing: bearing,
@@ -375,6 +436,12 @@ export function RouteMap3DPage() {
       });
     }
     
+    // 💡 비행 완료 후 마커 제거
+    if (flyMarkerRef.current) {
+      flyMarkerRef.current.remove();
+      flyMarkerRef.current = null;
+    }
+
     setIsFlying(false);
     isFlyingRef.current = false;
   };
