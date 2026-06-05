@@ -83,6 +83,58 @@ function removeSpikes(path: Array<any>) {
   return smoothed;
 }
 
+// 💡 Open-Meteo 고도 API를 활용하여 경로의 실제 해발고도(m)와 경사도(%)를 정밀하게 계산하는 헬퍼 함수
+async function enrichWithElevation(path: Array<any>): Promise<Array<any>> {
+  if (path.length === 0) return path;
+  
+  const chunkSize = 100;
+  for (let i = 0; i < path.length; i += chunkSize) {
+    const chunk = path.slice(i, i + chunkSize);
+    const lats = chunk.map(p => p[1].toFixed(5)).join(',');
+    const lngs = chunk.map(p => p[0].toFixed(5)).join(',');
+    
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.elevation) {
+          data.elevation.forEach((ele: number, idx: number) => {
+            chunk[idx][3] = ele; // 4번째 값으로 해발고도(m) 저장
+          });
+        }
+      }
+    } catch (e) {
+      console.error("고도 데이터 수신 실패:", e);
+    }
+  }
+
+  // 💡 계산된 고도를 바탕으로 실제 경사도(%) 계산 및 Grade 재조정
+  for (let i = 1; i < path.length; i++) {
+    const prev = path[i - 1];
+    const curr = path[i];
+    
+    if (prev[3] !== undefined && curr[3] !== undefined) {
+      const distKm = getDistKm(prev[1], prev[0], curr[1], curr[0]);
+      if (distKm > 0.005) { // 5m 이상 이동했을 때만 경사도 계산 (노이즈 방지)
+        const altDiff = Math.abs(curr[3] - prev[3]); // 고도차 (m)
+        const slopePercent = (altDiff / (distKm * 1000)) * 100;
+        curr[4] = Number(slopePercent.toFixed(1)); // 5번째 값으로 경사도(%) 저장
+        
+        // TMAP이 계단(2)이라고 한 곳은 그대로 유지, 나머지는 실제 경사도로 덮어쓰기
+        if (curr[2] !== 2) {
+          if (slopePercent >= 7) curr[2] = 3;      // 7% 이상: 가파른 언덕 (보라색)
+          else if (slopePercent >= 4) curr[2] = 1; // 4~7%: 얕은 언덕/단차 (노란색)
+          else curr[2] = 0;                        // 4% 미만: 평지 (에메랄드)
+        }
+      } else {
+        curr[4] = prev[4] || 0;
+        if (curr[2] !== 2) curr[2] = prev[2] || 0;
+      }
+    }
+  }
+  return path;
+}
+
 // 1. 내 주변 맞춤 쾌적 경로 생성 알고리즘
 export async function generateComfortRoute(distanceKm: number, currentLat: number, currentLng: number, stairOption: 'avoid' | 'allow_some' | 'ignore' = 'avoid', gradientOption: 'flat' | 'allow_some' | 'ignore' = 'flat') {
   console.log(`[Algorithm 1] ${distanceKm}km 쾌적 경로 탐색 시작. 기준점: ${currentLat}, ${currentLng}`);
@@ -157,7 +209,18 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
         // 거리 오차 패널티 완화
         score -= Math.abs(distanceKm - actualDist) * 5;
 
-        // 💡 유저의 계단 및 경사도 회피 옵션에 따른 추가 패널티 적용
+        // 💡 1. 스파이크 제거
+        let cleanedPath = removeSpikes(fullPath);
+
+        // 💡 2. TMAP 경로에 실제 고도(m)와 경사도(%)를 결합하여 데이터를 고도화
+        if (cleanedPath.length > 0) {
+          cleanedPath = await enrichWithElevation(cleanedPath);
+        }
+
+        // 💡 3. 실제 고도 데이터 기반으로 언덕(steepCount) 개수를 정밀하게 재산출
+        steepCount = cleanedPath.filter(p => p[2] === 3).length;
+
+        // 💡 4. 재산출된 지형 데이터를 바탕으로 유저 옵션 필터링 및 패널티 적용
         let isValid = true;
         if (stairOption === 'avoid' && stairCount > 0) {
           isValid = false; // 계단이 있으면 아예 후보에서 배제
@@ -171,8 +234,6 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
           score -= steepCount * 2;
         }
         
-        // 스파이크 제거 후 최종 경로 삽입
-        const cleanedPath = removeSpikes(fullPath);
         if (isValid && cleanedPath.length > 0) {
           results.push({
             id: cand.id,
