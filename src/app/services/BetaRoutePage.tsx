@@ -75,7 +75,7 @@ export function BetaRoutePage() {
   };
 
   // 2. GPS 아트 매핑 테스트 핸들러
-  const handleTestArtRoute = async (shapeType: 'heart' | 'star' | 'thumbsup') => {
+  const handleTestArtRoute = async (shapeType: 'heart' | 'diamond' | 'thumbsup') => {
     setLoading(true);
     const result = await findBestArtMapping(shapeType);
     
@@ -195,9 +195,9 @@ export function BetaRoutePage() {
                   <span className="text-[11px] font-black text-slate-300">하트</span>
                 </button>
                 
-                <button onClick={() => handleTestArtRoute('star')} className="bg-slate-800/80 border border-slate-700 hover:border-yellow-400 hover:bg-slate-800 active:scale-[0.95] p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">
-                  <span className="text-3xl">⭐</span>
-                  <span className="text-[11px] font-black text-slate-300">별</span>
+                <button onClick={() => handleTestArtRoute('diamond')} className="bg-slate-800/80 border border-slate-700 hover:border-blue-300 hover:bg-slate-800 active:scale-[0.95] p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">
+                  <span className="text-3xl">💎</span>
+                  <span className="text-[11px] font-black text-slate-300">다이아몬드</span>
                 </button>
 
                 <button onClick={() => handleTestArtRoute('thumbsup')} className="bg-slate-800/80 border border-slate-700 hover:border-blue-400 hover:bg-slate-800 active:scale-[0.95] p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">

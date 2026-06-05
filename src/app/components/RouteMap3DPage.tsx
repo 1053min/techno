@@ -81,7 +81,7 @@ export function RouteMap3DPage() {
     // 지도 초기화
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: "mapbox://styles/mapbox/satellite-streets-v12", // 위성 지도 스타일
+      style: "mapbox://styles/mapbox/dark-v11", // 앱 테마에 맞는 일반 다크 지도 스타일
       center: [startLng, startLat],
       zoom: 15.5,
       pitch: 65, // 3D 효과를 위한 카메라 각도
@@ -107,7 +107,7 @@ export function RouteMap3DPage() {
         type: "fill-extrusion",
         minzoom: 15,
         paint: {
-          "fill-extrusion-color": "#e2e8f0", // 건물 색상 (밝은 회색)
+          "fill-extrusion-color": "#334155", // 다크맵에 어울리는 어두운 건물 색상
           "fill-extrusion-height": [
             "interpolate", ["linear"], ["zoom"],
             15, 0,
