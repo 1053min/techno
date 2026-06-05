@@ -1,3 +1,5 @@
+import { generateComfortRoute } from './advancedRouteService';
+
 const VERCEL_TMAP_API = '/api/tmap';
 
 export const COORD_PRESETS = {
@@ -170,14 +172,36 @@ async function generateHanRiverBridgeRoute() {
 
 // 3. 프리셋 코스 분기 처리
 export async function generatePresetRoute(concept: 'hanriver' | 'cherryblossom' | 'interval' | 'hanyang') {
-  let routeData;
-  if (concept === 'hanriver') {
-    routeData = await generateHanRiverBridgeRoute(); 
+  let startLat = 0;
+  let startLng = 0;
+  let targetDist = 3;
+
+  if (concept === 'hanyang') {
+    startLat = COORD_PRESETS.HANYANG.lat;
+    startLng = COORD_PRESETS.HANYANG.lng;
+    targetDist = 3.5;
   } else if (concept === 'interval') {
-    routeData = await generateLoopRoute(COORD_PRESETS.JAMSIL, 3); // 석촌호수(잠실) 시작으로 수정
-  } else {
-    const start = COORD_PRESETS[concept === 'hanyang' ? 'HANYANG' : 'GANGNAM'];
-    routeData = await generateLoopRoute(start, 3);
+    startLat = COORD_PRESETS.JAMSIL.lat;
+    startLng = COORD_PRESETS.JAMSIL.lng;
+    targetDist = 4.5;
+  } else if (concept === 'cherryblossom') {
+    startLat = COORD_PRESETS.GANGNAM.lat;
+    startLng = COORD_PRESETS.GANGNAM.lng;
+    targetDist = 3.8;
+  } else if (concept === 'hanriver') {
+    startLat = 37.5115; // 반포 한강공원 기점
+    startLng = 126.9975;
+    targetDist = 5.2;
+  }
+
+  // 💡 기존의 임시 도형 코스가 아닌, TMAP 기반 고도화 경로 생성 로직(generateComfortRoute) 호출
+  // 추천 코스이므로 다양한 지형을 포함할 수 있도록 회피 옵션은 'ignore'로 둡니다.
+  const candidates = await generateComfortRoute(targetDist, startLat, startLng, 'ignore', 'ignore');
+  let routeData: any = candidates.length > 0 ? candidates[0] : null;
+
+  // 혹시라도 탐색에 실패할 경우를 대비한 안전장치(Fallback)
+  if (!routeData) {
+    routeData = await generateLoopRoute({ lat: startLat, lng: startLng }, targetDist);
   }
   
   // 컴포넌트에서 벚꽃 이펙트 등을 띄우기 위해 conceptType 강제 주입
