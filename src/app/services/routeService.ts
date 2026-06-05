@@ -37,7 +37,8 @@ function removeSpikes(path: Array<[number, number]>) {
       const next = path[i + 1];
       // 이전 점과 다음 점이 매우 가까운데 현재 점만 멀리 튀어나간 경우 (유클리디안 거리 약 30m 이내)
       const dist = Math.sqrt(Math.pow(prev[0] - next[0], 2) + Math.pow(prev[1] - next[1], 2));
-      if (dist < 0.000어나온 현재 점을 스킵하여 매끄럽게 연결
+      if (dist < 0.00008) {
+        continue; // 튀어나온 현재 점을 스킵하여 매끄럽게 연결
       }
     }
     smoothed.push(path[i]);
