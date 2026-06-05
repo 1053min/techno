@@ -69,7 +69,8 @@ function removeSpikes(path: Array<any>) {
     // 최근 지나온 경로(최대 15개 뎁스)를 스캔하여, 현재 점과 매우 가까운 곳을 다시 지나는 경우(왕복/루프) 그 사이를 잘라냅니다.
     for (let j = Math.max(0, smoothed.length - 15); j < smoothed.length - 1; j++) {
       const dist = Math.sqrt(Math.pow(smoothed[j][0] - path[i][0], 2) + Math.pow(smoothed[j][1] - path[i][1], 2));
-      if (dist < 0.00008) { // 💡 임계값을 대폭 축소(약 5~8m)하여, 횡단보도를 건너는 'ㄷ'자 형태를 깎아먹지 않도록 수정
+      // 💡 임계값을 다시 0.00015 (약 15m)로 상향하여 스파이크(튀는 선)를 확실히 제거
+      if (dist < 0.00015) { 
         smoothed.length = j + 1; // 겹치는 루프 구간 통째로 폐기
         foundBacktrack = true;
         break;
@@ -130,17 +131,15 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
         data.features.forEach((f: any) => {
           // 💡 인도 선형 좌표 추출 및 계단/경사도 분리 주입
           if (f.geometry.type === 'LineString') {
-            let grade = 0; // 0: 평지, 1: 얕은 경사, 2: 계단, 3: 가파른 경사
+            let grade = 0; // 0: 평지, 2: 계단, 3: 가파른 경사
             if (f.properties?.facilityType === '14') {
               stairCount++;
               grade = 2; // 계단
             } else if (f.properties?.facilityType === '15') {
               steepCount++;
               grade = 3; // 가파른 경사
-            } else if (f.properties?.facilityType === '16' || f.properties?.facilityType === '17') {
-              steepCount++;
-              grade = 1; // 얕은 경사/단차
             }
+            // 💡 단차(16, 17)는 실제 인도의 자연스러운 경사가 아니므로 철저히 무시하고 평지(0)로 취급
             
             f.geometry.coordinates.forEach((coord: any) => {
               fullPath.push([coord[0], coord[1], grade]); // [lng, lat, grade] 형태로 맵핑

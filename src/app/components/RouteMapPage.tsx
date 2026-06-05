@@ -145,7 +145,7 @@ export function RouteMapPage() {
            if (activeLayer === 'general') return "#f97316"; // 기본: 전부 오렌지색
            if (activeLayer === 'gradient') {
              if (grade === 3) return "#7E22CE"; // 보라 (가파름)
-             if (grade === 1) return "#EF4444"; // 빨강 (얕은 경사)
+             if (grade === 2) return "#E11D48"; // 💡 진짜 계단/경사만 빨강/보라로 강조
              return "#94A3B8"; // 회색 (평탄/계단무시)
            }
            if (activeLayer === 'stair') {

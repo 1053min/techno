@@ -28,16 +28,31 @@ async function getSafePoiCoordinate(lat: number, lng: number) {
   return { lat, lng }; // 실패 시 원래 좌표 그대로 반환
 }
 
+// 💡 TMAP 경로 데이터에서 좌표와 경사도를 추출하는 공통 헬퍼 함수
+function parseTmapFeatures(features: any[]) {
+  const fullPath: Array<any> = [];
+  features.forEach((f: any) => {
+    if (f.geometry.type === 'LineString') {
+      let grade = 0;
+      if (f.properties?.facilityType === '14') grade = 2; // 계단
+      else if (f.properties?.facilityType === '15') grade = 3; // 가파른 경사
+      // 16, 17 같은 단순 단차는 평지(0)로 무시하여 경사도 뷰의 정확성 향상
+      f.geometry.coordinates.forEach((coord: any) => fullPath.push([coord[0], coord[1], grade]));
+    }
+  });
+  return fullPath;
+}
+
 // 💡 삐죽 튀어나온 경로(Spike)나 불필요한 백트래킹을 제거하는 후처리 필터
-function removeSpikes(path: Array<[number, number]>) {
-  const smoothed: Array<[number, number]> = [];
+function removeSpikes(path: Array<any>) {
+  const smoothed: Array<any> = [];
   for (let i = 0; i < path.length; i++) {
     if (smoothed.length > 0 && i < path.length - 1) {
       const prev = smoothed[smoothed.length - 1];
       const next = path[i + 1];
-      // 이전 점과 다음 점이 매우 가까운데 현재 점만 멀리 튀어나간 경우 (유클리디안 거리 약 30m 이내)
       const dist = Math.sqrt(Math.pow(prev[0] - next[0], 2) + Math.pow(prev[1] - next[1], 2));
-      if (dist < 0.00008) {
+      // 💡 임계값을 다시 0.00015 (약 15m)로 상향하여 스파이크 확실히 제거
+      if (dist < 0.00015) {
         continue; // 튀어나온 현재 점을 스킵하여 매끄럽게 연결
       }
     }
@@ -86,10 +101,8 @@ export async function generateLoopRoute(start: { lat: number; lng: number }, dis
       throw new Error(data.message || "TMAP 경로 생성 실패");
     }
     
-    const fullPath: Array<[number, number]> = [];
-    data.features
-      .filter((f: any) => f.geometry.type === 'LineString')
-      .forEach((f: any) => fullPath.push(...f.geometry.coordinates));
+    // 💡 모든 추천 코스도 경사도(grade) 데이터를 추출하도록 공통 헬퍼 함수 적용
+    const fullPath = parseTmapFeatures(data.features);
     
     return { path: removeSpikes(fullPath), name: '추천 다각형 루프 코스' };
   } catch (error) {
@@ -123,8 +136,7 @@ export async function generateLoopRoute(start: { lat: number; lng: number }, dis
       const retryData = await retryResponse.json();
       if (!retryResponse.ok || !retryData.features) throw new Error("재시도 실패");
       
-      const retryFullPath: Array<[number, number]> = [];
-      retryData.features.filter((f: any) => f.geometry.type === 'LineString').forEach((f: any) => retryFullPath.push(...f.geometry.coordinates));
+      const retryFullPath = parseTmapFeatures(retryData.features);
       
       return { path: removeSpikes(retryFullPath), name: '추천 코스 (경로 보정됨)' };
     } catch (retryError) {
@@ -161,8 +173,7 @@ async function generateHanRiverBridgeRoute() {
     const data = await response.json();
     if (!response.ok || !data.features) throw new Error("TMAP 경로 생성 실패");
     
-    const fullPath: Array<[number, number]> = [];
-    data.features.filter((f: any) => f.geometry.type === 'LineString').forEach((f: any) => fullPath.push(...f.geometry.coordinates));
+    const fullPath = parseTmapFeatures(data.features);
     
     return { path: fullPath, name: '한강 대교 크로스 런' };
   } catch (error) {
@@ -186,6 +197,8 @@ async function generateSeokchonLakeRoute() {
       body: JSON.stringify({
         startX: start.lng.toString(), startY: start.lat.toString(),
         endX: start.lng.toString(), endY: start.lat.toString(),
+        // 💡 출발/도착점이 완전히 같으면 에러가 나므로, 미세하게 빗겨 찍어서 반포대교->동작대교 폐경로(Loop) 완성
+        endX: (start.lng + 0.0001).toString(), endY: start.lat.toString(),
         passList: passList,
         reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
         startName: encodeURIComponent("출발"), endName: encodeURIComponent("도착"),
@@ -195,8 +208,7 @@ async function generateSeokchonLakeRoute() {
     const data = await response.json();
     if (!response.ok || !data.features) throw new Error("TMAP 경로 생성 실패");
     
-    const fullPath: Array<[number, number]> = [];
-    data.features.filter((f: any) => f.geometry.type === 'LineString').forEach((f: any) => fullPath.push(...f.geometry.coordinates));
+    const fullPath = parseTmapFeatures(data.features);
     
     return { path: fullPath, name: '잠실 석촌호수 순환 런' };
   } catch (error) {

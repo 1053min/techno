@@ -169,7 +169,6 @@ export function RouteMap3DPage() {
             "match", ["get", "grade"],
             3, "#7E22CE", // 보라 (가파른 경사)
             2, "#E11D48", // 빨강 (계단)
-            1, "#F59E0B", // 주황 (얕은 경사)
             0, "#10B981", // 에메랄드 (평지)
             "#10B981"
           ], 
@@ -193,7 +192,7 @@ export function RouteMap3DPage() {
 
     let colorExpression: any[];
     if (activeLayer === 'gradient') {
-      colorExpression = ["match", ["get", "grade"], 3, "#7E22CE", 1, "#EF4444", "#94A3B8"]; // 언덕(보라/빨강) 외엔 회색
+      colorExpression = ["match", ["get", "grade"], 3, "#7E22CE", 2, "#E11D48", "#94A3B8"]; // 💡 단차 완전 무시, 계단(2)과 언덕(3)만 표시
     } else if (activeLayer === 'stair') {
       colorExpression = ["match", ["get", "grade"], 2, "#E11D48", "#CBD5E1"]; // 계단(빨강) 외엔 옅은 회색
     } else {
@@ -202,7 +201,6 @@ export function RouteMap3DPage() {
         "match", ["get", "grade"],
         3, "#7E22CE",
         2, "#E11D48",
-        1, "#F59E0B",
         0, "#10B981",
         "#10B981"
       ];
