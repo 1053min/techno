@@ -85,7 +85,7 @@ export function RouteMap3DPage() {
       style: "mapbox://styles/mapbox/dark-v11", // 앱 테마에 맞는 일반 다크 지도 스타일
       center: [startLng, startLat],
       zoom: 15.5,
-      pitch: 65, // 3D 효과를 위한 카메라 각도
+      pitch: 70, // 3D 효과(고저차)를 극대화하기 위해 더 눕힘
       bearing: 45, // 카메라 회전 각도
     });
 
@@ -97,7 +97,7 @@ export function RouteMap3DPage() {
         tileSize: 512,
         maxzoom: 14,
       });
-      map.current!.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 }); // 지형 과장도 1.5배
+      map.current!.setTerrain({ source: "mapbox-dem", exaggeration: 2.8 }); // 💡 지형 과장도(Exaggeration)를 2.8로 대폭 높여서 오르막/내리막이 확실히 올록볼록하게 보이도록 설정
 
       // 💡 3D 건물 레이어 추가
       map.current!.addLayer({
@@ -388,7 +388,7 @@ export function RouteMap3DPage() {
       map.current.flyTo({
         center: [routeInfo.path[0][0], routeInfo.path[0][1]],
         zoom: 15.5,
-        pitch: 65,
+        pitch: 70,
         bearing: 45,
         duration: 2000
       });
@@ -406,44 +406,67 @@ export function RouteMap3DPage() {
       .setLngLat([routeInfo.path[0][0], routeInfo.path[0][1]])
       .addTo(map.current!);
 
+    // 💡 부드러운 애니메이션을 위한 전체 경로 거리 누적 배열 계산
     const coords = routeInfo.path;
+    const dists = [0];
+    let totalDist = 0;
     for (let i = 0; i < coords.length - 1; i++) {
-      if (!isFlyingRef.current) break; // 중지 버튼 클릭 시 루프 탈출
-      
-      const p1 = coords[i];
-      const p2 = coords[i+1];
-      const dist = getDistanceKm(p1[1], p1[0], p2[1], p2[0]);
-      
-      if (dist < 0.002) continue; // 너무 짧은 구간은 카메라 흔들림 방지를 위해 스킵
-      
-      const bearing = getBearing(p1[0], p1[1], p2[0], p2[1]);
-
-      await new Promise<void>((resolve) => {
-        if (!map.current) { resolve(); return; }
-
-        // 💡 카메라가 이동할 때 러너 마커도 다음 좌표로 이동
-        flyMarkerRef.current?.setLngLat([p2[0], p2[1]]);
-
-        map.current.easeTo({
-          center: [p2[0], p2[1]],
-          bearing: bearing,
-          pitch: 75, // 비행 중에는 시야를 더 낮춰서(눕혀서) 역동적인 뷰 제공
-          zoom: 17.5, // 줌 인
-          duration: dist * 30000, // 1km 당 30초 속도로 비행
-          easing: (t) => t // 일정한 속도로 이동 (Linear)
-        });
-        map.current.once('moveend', () => resolve());
-      });
+      const d = getDistanceKm(coords[i][1], coords[i][0], coords[i+1][1], coords[i+1][0]);
+      totalDist += d;
+      dists.push(totalDist);
     }
     
-    // 💡 비행 완료 후 마커 제거
-    if (flyMarkerRef.current) {
-      flyMarkerRef.current.remove();
-      flyMarkerRef.current = null;
-    }
+    const speedKmPerSec = 0.035; // 초당 35m 이동 속도
+    let startTime = performance.now();
+    let currentBearing = getBearing(coords[0][0], coords[0][1], coords[1][0], coords[1][1]);
 
-    setIsFlying(false);
-    isFlyingRef.current = false;
+    // 💡 requestAnimationFrame을 활용해 매 프레임마다 카메라/마커 위치를 보간(Interpolation)하여 완벽하게 부드러운 움직임 구현
+    const animate = (currentTime: number) => {
+      if (!isFlyingRef.current || !map.current) return;
+
+      const elapsedTime = (currentTime - startTime) / 1000;
+      const currentDist = elapsedTime * speedKmPerSec;
+
+      if (currentDist >= totalDist) {
+        setIsFlying(false);
+        isFlyingRef.current = false;
+        flyMarkerRef.current?.remove();
+        flyMarkerRef.current = null;
+        return;
+      }
+
+      let idx = 0;
+      while (idx < dists.length - 1 && dists[idx + 1] < currentDist) idx++;
+
+      const p1 = coords[idx];
+      const p2 = coords[idx + 1];
+      const segmentDist = dists[idx + 1] - dists[idx];
+      const progress = segmentDist === 0 ? 0 : (currentDist - dists[idx]) / segmentDist;
+
+      const currentLng = p1[0] + (p2[0] - p1[0]) * progress;
+      const currentLat = p1[1] + (p2[1] - p1[1]) * progress;
+
+      const targetBearing = getBearing(p1[0], p1[1], p2[0], p2[1]);
+      
+      // 코너링 시 카메라 회전이 튀지 않도록 부드러운 스무딩(Lerp) 적용
+      let diff = targetBearing - currentBearing;
+      while (diff > 180) diff -= 360;
+      while (diff < -180) diff += 360;
+      currentBearing += diff * 0.08; 
+
+      flyMarkerRef.current?.setLngLat([currentLng, currentLat]);
+
+      map.current.jumpTo({
+        center: [currentLng, currentLat],
+        zoom: 17.5,
+        pitch: 82, // 💡 비행 중 고저차(언덕)를 확실하게 느끼기 위해 시야를 거의 바닥까지 눕힘
+        bearing: currentBearing,
+      });
+
+      requestAnimationFrame(animate);
+    };
+
+    requestAnimationFrame(animate);
   };
 
   // 컴포넌트 언마운트 시 비행 루프 종료
