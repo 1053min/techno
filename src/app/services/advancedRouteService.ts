@@ -220,16 +220,16 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
 
 
 // 2. 서울시 전체 대상 최적 GPS 아트 맵핑 알고리즘
-export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'thumbsup') {
+export async function findBestArtMapping(shapeType: 'heart' | 'diamond' | 'thumbsup') {
   console.log(`[Algorithm 2] 서울시 전체 대상 '${shapeType}' 도안 맵핑 시작.`);
   
   // 0~1.0 비율로 정규화된 템플릿 (크기, 위치 없음)
   const normalizedTemplates = {
     heart: [
-      [0.5, 0.1], [0.1, 0.6], [0.25, 0.9], [0.5, 0.75], [0.75, 0.9], [0.9, 0.6] // 하단 끝 -> 좌측 외곽 -> 좌측 봉우리 -> 중앙 파임 -> 우측 봉우리 -> 우측 외곽
+      [0.5, 0.1], [0.15, 0.55], [0.25, 0.9], [0.5, 0.7], [0.75, 0.9], [0.85, 0.55] // 하단 끝 -> 좌측 외곽 -> 좌측 봉우리 -> 중앙 파임 -> 우측 봉우리 -> 우측 외곽
     ],
-    star: [
-      [0.5, 0.9], [0.65, 0.5], [0.2, 0.7], [0.8, 0.7], [0.35, 0.5]
+    diamond: [
+      [0.5, 0.1], [0.15, 0.6], [0.3, 0.9], [0.7, 0.9], [0.85, 0.6] // 보석 모양: 하단 뾰족 -> 좌측 모서리 -> 좌측 상단(평평) -> 우측 상단(평평) -> 우측 모서리
     ],
     thumbsup: [
       [0.3, 0.9], [0.3, 0.2], [0.5, 0.2], [0.5, 0.4], [0.9, 0.4], [0.9, 0.8], [0.5, 0.9] // 손목 -> 엄지 -> 손가락 -> 손바닥
@@ -343,14 +343,14 @@ export async function findBestArtMapping(shapeType: 'heart' | 'star' | 'thumbsup
     ]);
     fbPath.push(fbPath[0]);
     return {
-      name: `[임시] '${fbZone.name}' ${shapeType === 'heart' ? '하트' : shapeType === 'star' ? '별' : '엄지척'} 코스`,
+      name: `[임시] '${fbZone.name}' ${shapeType === 'heart' ? '하트' : shapeType === 'diamond' ? '다이아몬드' : '엄지척'} 코스`,
       conceptType: `beta_art_${shapeType}`,
       path: fbPath as [number, number][]
     };
   }
 
   return {
-    name: `최적 맵핑 성공! '${bestZone}' ${shapeType === 'heart' ? '하트' : shapeType === 'star' ? '별' : '엄지척'} 코스`,
+    name: `최적 맵핑 성공! '${bestZone}' ${shapeType === 'heart' ? '하트' : shapeType === 'diamond' ? '다이아몬드' : '엄지척'} 코스`,
     conceptType: `beta_art_${shapeType}`,
     path: bestPath
   };

@@ -50,6 +50,30 @@ export function RouteMap3DPage() {
       });
       map.current!.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 }); // 지형 과장도 1.5배
 
+      // 💡 3D 건물 레이어 추가
+      map.current!.addLayer({
+        id: "3d-buildings",
+        source: "composite",
+        "source-layer": "building",
+        filter: ["==", "extrude", "true"],
+        type: "fill-extrusion",
+        minzoom: 15,
+        paint: {
+          "fill-extrusion-color": "#e2e8f0", // 건물 색상 (밝은 회색)
+          "fill-extrusion-height": [
+            "interpolate", ["linear"], ["zoom"],
+            15, 0,
+            15.05, ["get", "height"],
+          ],
+          "fill-extrusion-base": [
+            "interpolate", ["linear"], ["zoom"],
+            15, 0,
+            15.05, ["get", "min_height"],
+          ],
+          "fill-extrusion-opacity": 0.8, // 약간 투명하게 해서 경로가 잘 보이도록 함
+        },
+      });
+
       // 경로 그리기
       const coordinates = routeInfo.path.map((pt: any) => [pt[0], pt[1]]);
       map.current!.addSource("route", {
