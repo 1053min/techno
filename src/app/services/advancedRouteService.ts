@@ -69,7 +69,7 @@ function removeSpikes(path: Array<any>) {
     // 최근 지나온 경로(최대 15개 뎁스)를 스캔하여, 현재 점과 매우 가까운 곳을 다시 지나는 경우(왕복/루프) 그 사이를 잘라냅니다.
     for (let j = Math.max(0, smoothed.length - 15); j < smoothed.length - 1; j++) {
       const dist = Math.sqrt(Math.pow(smoothed[j][0] - path[i][0], 2) + Math.pow(smoothed[j][1] - path[i][1], 2));
-      if (dist < 0.0003) { // 약 20~30m 이내로 다시 돌아왔다면 왕복 스파이크로 간주
+      if (dist < 0.00008) { // 💡 임계값을 대폭 축소(약 5~8m)하여, 횡단보도를 건너는 'ㄷ'자 형태를 깎아먹지 않도록 수정
         smoothed.length = j + 1; // 겹치는 루프 구간 통째로 폐기
         foundBacktrack = true;
         break;
@@ -146,10 +146,11 @@ export async function generateComfortRoute(distanceKm: number, currentLat: numbe
               fullPath.push([coord[0], coord[1], grade]); // [lng, lat, grade] 형태로 맵핑
             });
           }
-          // 횡단보도(CP) 포인트 카운트
-          if (f.geometry.type === 'Point' && f.properties?.pointType === 'CP') {
+          
+          // 💡 TMAP 횡단보도(facilityType '11') 감지 및 강력한 패널티 부여로 최소화
+          if (f.geometry.type === 'Point' && f.properties?.facilityType === '11') {
             crosswalkCount++;
-            score -= 1; // 횡단보도 패널티 완화
+            score -= 4; // 횡단보도를 거칠 때마다 4점씩 강력하게 감점하여, 무정지(횡단보도가 적은) 코스가 1순위로 추천되도록 유도
           }
         });
 

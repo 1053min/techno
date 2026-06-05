@@ -37,8 +37,7 @@ function removeSpikes(path: Array<[number, number]>) {
       const next = path[i + 1];
       // 이전 점과 다음 점이 매우 가까운데 현재 점만 멀리 튀어나간 경우 (유클리디안 거리 약 30m 이내)
       const dist = Math.sqrt(Math.pow(prev[0] - next[0], 2) + Math.pow(prev[1] - next[1], 2));
-      if (dist < 0.0003) {
-        continue; // 튀어나온 현재 점을 스킵하여 매끄럽게 연결
+      if (dist < 0.000어나온 현재 점을 스킵하여 매끄럽게 연결
       }
     }
     smoothed.push(path[i]);
@@ -170,41 +169,71 @@ async function generateHanRiverBridgeRoute() {
   }
 }
 
+// 💡 석촌호수(잠실) 동호~서호를 도는 커스텀 코스 생성
+async function generateSeokchonLakeRoute() {
+  const start = { lat: 37.5138, lng: 127.1030 }; // 석촌호수 중심부 북단
+  const p1 = { lat: 37.5090, lng: 127.0988 }; // 서호 남단
+  const p2 = { lat: 37.5075, lng: 127.1055 }; // 동호 남단
+  const p3 = { lat: 37.5125, lng: 127.1085 }; // 동호 북단
+  
+  const passList = `${p1.lng},${p1.lat}_${p2.lng},${p2.lat}_${p3.lng},${p3.lat}`;
+
+  try {
+    const response = await fetch(VERCEL_TMAP_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startX: start.lng.toString(), startY: start.lat.toString(),
+        endX: start.lng.toString(), endY: start.lat.toString(),
+        passList: passList,
+        reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
+        startName: encodeURIComponent("출발"), endName: encodeURIComponent("도착"),
+        searchOption: "30" 
+      })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.features) throw new Error("TMAP 경로 생성 실패");
+    
+    const fullPath: Array<[number, number]> = [];
+    data.features.filter((f: any) => f.geometry.type === 'LineString').forEach((f: any) => fullPath.push(...f.geometry.coordinates));
+    
+    return { path: fullPath, name: '잠실 석촌호수 순환 런' };
+  } catch (error) {
+    return { path: [[start.lng, start.lat], [p1.lng, p1.lat], [p2.lng, p2.lat], [p3.lng, p3.lat], [start.lng, start.lat]], name: '임시 석촌호수 런' };
+  }
+}
+
 // 3. 프리셋 코스 분기 처리
 export async function generatePresetRoute(concept: 'hanriver' | 'cherryblossom' | 'interval' | 'hanyang') {
-  let startLat = 0;
-  let startLng = 0;
-  let targetDist = 3;
+  let routeData: any = null;
 
-  if (concept === 'hanyang') {
-    startLat = COORD_PRESETS.HANYANG.lat;
-    startLng = COORD_PRESETS.HANYANG.lng;
-    targetDist = 3.5;
+  if (concept === 'hanriver') {
+    routeData = await generateHanRiverBridgeRoute();
   } else if (concept === 'interval') {
-    startLat = COORD_PRESETS.JAMSIL.lat;
-    startLng = COORD_PRESETS.JAMSIL.lng;
-    targetDist = 4.5;
-  } else if (concept === 'cherryblossom') {
-    startLat = COORD_PRESETS.GANGNAM.lat;
-    startLng = COORD_PRESETS.GANGNAM.lng;
-    targetDist = 3.8;
-  } else if (concept === 'hanriver') {
-    startLat = 37.5115; // 반포 한강공원 기점
-    startLng = 126.9975;
-    targetDist = 5.2;
+    routeData = await generateSeokchonLakeRoute();
+  } else {
+    let startLat = 0;
+    let startLng = 0;
+    let targetDist = 3;
+
+    if (concept === 'hanyang') {
+      startLat = COORD_PRESETS.HANYANG.lat;
+      startLng = COORD_PRESETS.HANYANG.lng;
+      targetDist = 3.5;
+    } else if (concept === 'cherryblossom') {
+      startLat = COORD_PRESETS.GANGNAM.lat;
+      startLng = COORD_PRESETS.GANGNAM.lng;
+      targetDist = 3.8;
+    }
+
+    const candidates = await generateComfortRoute(targetDist, startLat, startLng, 'ignore', 'ignore');
+    routeData = candidates.length > 0 ? candidates[0] : null;
+
+    if (!routeData) {
+      routeData = await generateLoopRoute({ lat: startLat, lng: startLng }, targetDist);
+    }
   }
 
-  // 💡 기존의 임시 도형 코스가 아닌, TMAP 기반 고도화 경로 생성 로직(generateComfortRoute) 호출
-  // 추천 코스이므로 다양한 지형을 포함할 수 있도록 회피 옵션은 'ignore'로 둡니다.
-  const candidates = await generateComfortRoute(targetDist, startLat, startLng, 'ignore', 'ignore');
-  let routeData: any = candidates.length > 0 ? candidates[0] : null;
-
-  // 혹시라도 탐색에 실패할 경우를 대비한 안전장치(Fallback)
-  if (!routeData) {
-    routeData = await generateLoopRoute({ lat: startLat, lng: startLng }, targetDist);
-  }
-  
-  // 컴포넌트에서 벚꽃 이펙트 등을 띄우기 위해 conceptType 강제 주입
   if (routeData) routeData.conceptType = concept;
   return routeData;
 }
